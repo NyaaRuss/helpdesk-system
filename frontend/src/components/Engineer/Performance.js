@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Paper,
-  CircularProgress,
-  Alert,
-  Divider,
+  Box, Typography, Grid, Card, CardContent, Paper,
+  CircularProgress, Alert, Divider
 } from '@mui/material';
 import {
   CheckCircleOutline,
@@ -18,21 +11,15 @@ import {
 } from '@mui/icons-material';
 import { ticketAPI } from '../../api/api';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
+  Chart as ChartJS, CategoryScale, LinearScale,
+  BarElement, Title, Tooltip, Legend, ArcElement,
 } from 'chart.js';
-import { Pie, Bar } from 'react-chartjs-2';
+import { Pie } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 const Performance = () => {
-  const [myTickets, setMyTickets] = useState([]);
+  const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -43,9 +30,9 @@ const Performance = () => {
   const fetchMyPerformance = async () => {
     try {
       setLoading(true);
-      // Fetches only tickets assigned to the logged-in user
-      const response = await ticketAPI.getAssignedTickets(); 
-      setMyTickets(response.data);
+      // Fixed: matches the key 'getEngineerPerformance' in your api.js
+      const response = await ticketAPI.getEngineerPerformance(); 
+      setMetrics(response.data);
     } catch (err) {
       setError('Could not load performance metrics.');
       console.error(err);
@@ -54,79 +41,88 @@ const Performance = () => {
     }
   };
 
-  // Logic to calculate stats based on 'myTickets'
-  const stats = {
-    total: myTickets.length,
-    resolved: myTickets.filter(t => t.status === 'resolved').length,
-    inProgress: myTickets.filter(t => t.status === 'in_progress').length,
-    open: myTickets.filter(t => t.status === 'open').length,
-  };
+  if (loading) return <Box display="flex" justifyContent="center" mt={10}><CircularProgress /></Box>;
 
-  const resolutionRate = stats.total > 0 
-    ? Math.round((stats.resolved / stats.total) * 100) 
-    : 0;
-
+  // Data from your Backend: resolved_tickets, avg_resolution_time, success_rate, total_assigned
   const getStatusData = () => ({
-    labels: ['Resolved', 'In Progress', 'Open'],
+    labels: ['Resolved', 'Remaining'],
     datasets: [{
-      data: [stats.resolved, stats.inProgress, stats.open],
-      backgroundColor: ['#4caf50', '#ff9800', '#f44336'],
+      data: [metrics?.resolved_tickets || 0, (metrics?.total_assigned - metrics?.resolved_tickets) || 0],
+      backgroundColor: ['#4caf50', '#eeeeee'],
     }],
   });
 
-  if (loading) return <Box display="flex" justifyContent="center" mt={10}><CircularProgress /></Box>;
-
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>My Performance</Typography>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1a237e' }}>
+        My Performance
+      </Typography>
       <Typography variant="body1" color="textSecondary" sx={{ mb: 4 }}>
-        Personal productivity and ticket resolution overview.
+        Personal productivity based on system calculations.
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* Metric Cards */}
-        {[
-          { label: 'Assigned Tasks', value: stats.total, icon: <AssignmentTurnedIn />, color: 'primary.main' },
-          { label: 'Resolution Rate', value: `${resolutionRate}%`, icon: <Speed />, color: 'success.main' },
-          { label: 'Active Fixes', value: stats.inProgress, icon: <HourglassEmpty />, color: 'warning.main' },
-          { label: 'Completed', value: stats.resolved, icon: <CheckCircleOutline />, color: 'success.dark' },
-        ].map((item, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Box sx={{ color: item.color, mb: 1 }}>{item.icon}</Box>
-                <Typography variant="h4">{item.value}</Typography>
-                <Typography variant="body2" color="textSecondary">{item.label}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ textAlign: 'center', p: 1 }}>
+            <CardContent>
+              <AssignmentTurnedIn color="primary" sx={{ mb: 1 }} />
+              <Typography variant="h4">{metrics?.total_assigned || 0}</Typography>
+              <Typography variant="body2" color="textSecondary">Total Assigned</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ textAlign: 'center', p: 1 }}>
+            <CardContent>
+              <Speed color="success" sx={{ mb: 1 }} />
+              <Typography variant="h4">{metrics?.success_rate || '0%'}</Typography>
+              <Typography variant="body2" color="textSecondary">Success Rate</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ textAlign: 'center', p: 1 }}>
+            <CardContent>
+              <HourglassEmpty color="warning" sx={{ mb: 1 }} />
+              <Typography variant="h4">{metrics?.avg_resolution_time || '0h'}</Typography>
+              <Typography variant="body2" color="textSecondary">Avg. Solve Time</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ textAlign: 'center', p: 1 }}>
+            <CardContent>
+              <CheckCircleOutline color="success" sx={{ mb: 1 }} />
+              <Typography variant="h4">{metrics?.resolved_tickets || 0}</Typography>
+              <Typography variant="body2" color="textSecondary">Total Resolved</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Workload Distribution</Typography>
-            <Box sx={{ height: 300 }}>
-              <Pie data={getStatusData()} options={{ maintainAspectRatio: false }} />
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>Resolution Progress</Typography>
+            <Box sx={{ height: 250, display: 'flex', justifyContent: 'center' }}>
+               <Pie data={getStatusData()} options={{ maintainAspectRatio: false }} />
             </Box>
           </Paper>
         </Grid>
-        
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>Efficiency Tips</Typography>
+            <Typography variant="h6" gutterBottom>Efficiency Breakdown</Typography>
             <Divider sx={{ my: 2 }} />
             <Typography variant="body2" paragraph>
-              • <strong>Prioritize Criticals:</strong> You currently have {myTickets.filter(t => t.priority === 'critical').length} critical tickets.
+              • Your average resolution time is currently <strong>{metrics?.avg_resolution_time}</strong>.
             </Typography>
             <Typography variant="body2" paragraph>
-              • <strong>Stale Tickets:</strong> Ensure "In Progress" tickets are updated daily to maintain a high resolution rate.
+              • You have completed <strong>{metrics?.resolved_tickets}</strong> out of <strong>{metrics?.total_assigned}</strong> tickets.
             </Typography>
             <Typography variant="body2">
-              • <strong>Resolution Goal:</strong> Aim to keep your resolution rate above 80% for optimal system health.
+              • Maintain a success rate above 80% to meet your performance KPIs.
             </Typography>
           </Paper>
         </Grid>

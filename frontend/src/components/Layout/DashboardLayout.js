@@ -74,7 +74,7 @@ const DashboardLayout = ({ children }) => {
       return [
         ...commonItems,
         // CHANGE THIS LINE BELOW:
-        { text: 'Assigned Tickets', icon: <Assignment />, path: '/engineer/tickets' }, 
+        { text: 'Assigned Tickets', icon: <Assignment />, path: '/engineer/tickets?filter=mine' }, 
         { text: 'Performance', icon: <BarChart />, path: '/engineer/performance' },
       ];
     } else if (user?.user_type === 'admin') {

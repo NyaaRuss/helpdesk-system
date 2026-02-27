@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Grid, Paper, Typography, Box, Button, Card, CardContent, Alert, Chip,
   CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TablePagination, IconButton, Tooltip, TextField, Badge
+  TableRow, TablePagination, IconButton, Tooltip, TextField
 } from '@mui/material';
 import {
   CheckCircle, Refresh, Visibility, DoneAll, Search
@@ -39,7 +39,6 @@ const EngineerDashboard = () => {
       const allTickets = res.data || [];
       setTickets(allTickets);
 
-      // --- NEW ASSIGNED TASK LOGIC ---
       if (user) {
         const viewed = JSON.parse(localStorage.getItem('engineer_viewed_tasks') || '[]');
         const myNewTickets = allTickets.filter(t => 
@@ -55,24 +54,21 @@ const EngineerDashboard = () => {
 
   const handleMarkAsDone = async (ticketId) => {
     try {
-      // Transition status to 'resolved'
-      await ticketAPI.updateTicketStatus(ticketId, 'resolved');
+      // Use the correct API method from your api.js
+      await ticketAPI.updateTicket(ticketId, { status: 'resolved' });
       
-      // Update UI state locally
       setTickets(prev => prev.map(t => 
         t.id === ticketId ? { ...t, status: 'resolved' } : t
       ));
 
-      // Refresh counts
       fetchDashboardData();
     } catch (err) {
       console.error("Update error:", err);
-      alert("Failed to update status. Check if your backend View permits PATCH requests for 'status'.");
+      alert("Failed to update status. Ensure your backend Serializer permits status updates.");
     }
   };
 
   const handleViewTicket = (ticketId) => {
-    // Add to viewed list to clear the "NEW" notification badge
     const viewed = JSON.parse(localStorage.getItem('engineer_viewed_tasks') || '[]');
     if (!viewed.includes(ticketId)) {
       viewed.push(ticketId);
@@ -81,7 +77,16 @@ const EngineerDashboard = () => {
     navigate(`/tickets/${ticketId}`);
   };
 
-  // --- STATS CALCULATIONS ---
+  // Helper for Priority Styling
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case 'high': return 'error';
+      case 'medium': return 'warning';
+      case 'low': return 'success';
+      default: return 'default';
+    }
+  };
+
   const stats = {
     my_assigned: tickets.filter(t => t.assigned_engineers?.some(e => e.engineer.id === currentUser?.id)).length,
     active: tickets.filter(t => t.status !== 'resolved' && t.status !== 'closed').length,
@@ -101,7 +106,6 @@ const EngineerDashboard = () => {
       <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold', color: '#1a237e' }}>Engineer Dashboard</Typography>
       <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>System health and ticket management overview</Typography>
 
-      {/* ALERT BOX FOR NEW ASSIGNMENTS */}
       {newCount > 0 && (
         <Alert 
           severity="info" 
@@ -113,7 +117,6 @@ const EngineerDashboard = () => {
         </Alert>
       )}
 
-      {/* STAT CARDS */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ bgcolor: '#1976d2', color: 'white', cursor: 'pointer' }} onClick={() => navigate('/engineer/tickets?filter=mine')}>
@@ -137,7 +140,6 @@ const EngineerDashboard = () => {
         </Grid>
       </Grid>
 
-      {/* TICKETS TABLE */}
       <Paper sx={{ borderRadius: 2, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
         <Box p={3} display="flex" justifyContent="space-between" alignItems="center" borderBottom="1px solid #eee">
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Latest System Tickets</Typography>
@@ -152,6 +154,7 @@ const EngineerDashboard = () => {
               <TableRow>
                 <TableCell>Ticket #</TableCell>
                 <TableCell>Title</TableCell>
+                <TableCell>Priority</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
@@ -168,18 +171,28 @@ const EngineerDashboard = () => {
                       {isNew && <Chip label="NEW" size="small" color="info" sx={{ ml: 1, height: 20, fontSize: '10px' }} />}
                     </TableCell>
                     <TableCell>{t.title}</TableCell>
+                    {/* ADDED PRIORITY COLUMN */}
+                    <TableCell>
+                      <Chip 
+                        label={t.priority} 
+                        size="small" 
+                        variant="outlined"
+                        color={getPriorityColor(t.priority)} 
+                        sx={{ fontWeight: 'bold', textTransform: 'capitalize' }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Chip 
                         label={t.status} 
                         size="small" 
                         color={t.status === 'open' ? 'error' : (t.status === 'resolved' || t.status === 'closed') ? 'success' : 'warning'} 
+                        sx={{ textTransform: 'capitalize' }}
                       />
                     </TableCell>
                     <TableCell align="center">
                       <Box display="flex" justifyContent="center" gap={1}>
                         <IconButton onClick={() => handleViewTicket(t.id)}><Visibility fontSize="small" /></IconButton>
                         
-                        {/* ICON SWITCH LOGIC */}
                         {t.status === 'resolved' || t.status === 'closed' ? (
                           <Tooltip title="Resolved"><CheckCircle color="success" /></Tooltip>
                         ) : (
@@ -195,7 +208,7 @@ const EngineerDashboard = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        <TablePagination component="div" count={filteredTickets.length} rowsPerPage={rowsPerPage} page={page} onPageChange={(e, n) => setPage(n)} />
+        <TablePagination component="div" count={filteredTickets.length} rowsPerPage={rowsPerPage} page={page} onPageChange={(e, n) => setPage(n)} onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))} />
       </Paper>
     </Box>
   );

@@ -351,7 +351,7 @@ const TicketList = () => {
               <TableRow>
                 <TableCell width="120px">Ticket #</TableCell>
                 <TableCell>Title</TableCell>
-                <TableCell width="100px">Priority</TableCell>
+                {/*<TableCell width="100px">Priority</TableCell>*/}
                 <TableCell width="120px">Status</TableCell>
                 <TableCell width="120px">Category</TableCell>
                 <TableCell width="150px">Engineer</TableCell>
@@ -392,9 +392,9 @@ const TicketList = () => {
                         </Typography>
                       </Box>
                     </TableCell>
-                    <TableCell>
+                    {/*<TableCell>
                       {getPriorityChip(ticket.priority)}
-                    </TableCell>
+                    </TableCell>*/}
                     <TableCell>
                       {getStatusChip(ticket.status)}
                     </TableCell>

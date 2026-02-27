@@ -23,9 +23,14 @@ import AllTickets from './components/Admin/AllTickets';
 import UserManagement from './components/Admin/UserManagement';
 import EngineerManagement from './components/Admin/EngineerManagement';
 import Reports from './components/Admin/Reports';
+import UnassignedTickets from './components/Admin/UnassignedTickets';
 
 // Engineer components
 import EngineerDashboard from './components/Engineer/EngineerDashboard';
+import AvailableTickets from './components/Engineer/AvailableTickets.js';
+import Performance from './components/Engineer/Performance';
+import MyTickets from './components/Engineer/MyTicket';
+
 
 // Create theme
 const theme = createTheme({
@@ -116,18 +121,33 @@ function App() {
                   </DashboardLayout>
                 } />
                 
-                {/* Engineer routes */}
-                <Route path="/engineer/tickets" element={
+                // Inside your Admin routes section in the Routes component
+                <Route path="/admin/tickets/unassigned" element={
                   <DashboardLayout>
-                    <TicketList />
-                  </DashboardLayout>
-                } />
-                <Route path="/engineer/performance" element={
-                  <DashboardLayout>
-                    <EngineerDashboard />
+                    <UnassignedTickets />
                   </DashboardLayout>
                 } />
                 
+                {/* Engineer routes */}
+                {/* Engineer routes */}
+                <Route path="/engineer/tickets" element={
+                  <DashboardLayout>
+                    <MyTickets /> 
+                  </DashboardLayout>
+                } />
+
+                {/* FIX: Only one route for performance, pointing to the correct component */}
+                <Route path="/engineer/performance" element={
+                  <DashboardLayout>
+                    <Performance />
+                  </DashboardLayout>
+                } />
+
+                <Route path="/engineer/available" element={
+                  <DashboardLayout>
+                    <AvailableTickets />
+                  </DashboardLayout>
+                } />
                 {/* Redirect root to dashboard */}
                 <Route path="/" element={<Navigate to="/dashboard" />} />
               </Route>

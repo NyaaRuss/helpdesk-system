@@ -55,11 +55,15 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    
+
+# users/views.py
 class UserListView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
+        # We look for 'user_type' because that's what we put in api.js above
         user_type = self.request.query_params.get('user_type', None)
         if user_type:
             return User.objects.filter(user_type=user_type)

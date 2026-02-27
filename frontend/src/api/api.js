@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://127.0.0.1:8000/api';
+const API_URL = 'http://192.168.1.87:8000/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -100,6 +100,9 @@ export const authAPI = {
     }
   },
   // ... rest of the functions
+  getUsers: (userType) => api.get(`/auth/users/?user_type=${userType}`),
+  
+  getProfile: () => api.get('/auth/profile/'),
 };
 
 // Ticket API
@@ -107,9 +110,18 @@ export const ticketAPI = {
   getAllTickets: () => api.get('/tickets/'),
   getTicket: (id) => api.get(`/tickets/${id}/`),
   createTicket: (data) => api.post('/tickets/create/', data),
-  updateTicket: (id, data) => api.put(`/tickets/${id}/`, data),
-  assignTicket: (id, engineerId, note) => 
-    api.post(`/tickets/${id}/assign/`, { engineer_id: engineerId, note }),
+  //updateTicket: (id, data) => api.put(`/tickets/${id}/`, data),
+  // Inside your api.js ticketAPI object
+  // Ensure it looks exactly like this:
+  //updateTicket: (id, data) => axios.patch(`/tickets/${id}/`, data),
+  updateTicket: (id, data) => api.patch(`/tickets/${id}/`, data),
+  assignTicket: (ticketId, engineerIds, note) => 
+    api.post(`/tickets/${ticketId}/assign/`, { 
+      engineer_ids: engineerIds, 
+      note: note 
+    }),
+  getEngineerPerformance: () => api.get('/tickets/performance/'),
+  getTicketDetails: (id) => api.get(`/tickets/${id}/`),
   getTicketMessages: (ticketId) => api.get(`/tickets/${ticketId}/messages/`),
   getTicketLogs: (ticketId) => api.get(`/tickets/${ticketId}/logs/`),
   sendMessage: (data) => api.post('/tickets/messages/create/', data),

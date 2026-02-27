@@ -73,8 +73,9 @@ const DashboardLayout = ({ children }) => {
     } else if (user?.user_type === 'engineer') {
       return [
         ...commonItems,
-        { text: 'Assigned Tickets', icon: <Assignment />, path: '/tickets' },
-        { text: 'Performance', icon: <BarChart />, path: '/performance' },
+        // CHANGE THIS LINE BELOW:
+        { text: 'Assigned Tickets', icon: <Assignment />, path: '/engineer/tickets' }, 
+        { text: 'Performance', icon: <BarChart />, path: '/engineer/performance' },
       ];
     } else if (user?.user_type === 'admin') {
       return [

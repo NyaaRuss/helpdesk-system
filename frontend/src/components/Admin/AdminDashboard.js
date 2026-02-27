@@ -33,10 +33,30 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  // Locate this section inside fetchDashboardData (around lines 35-55)
   const fetchDashboardData = async () => {
     try {
-      const response = await ticketAPI.getDashboardStats();
-      setStats(response.data);
+      const [statsRes, ticketsRes, usersRes] = await Promise.all([
+        ticketAPI.getDashboardStats(),
+        ticketAPI.getAllTickets(),
+        authAPI.getUsers('engineer')
+      ]);
+
+      const allTickets = ticketsRes.data;
+      
+      // Logic for unassigned (no engineers and not resolved)
+      const unassignedCount = allTickets.filter(
+        t => (!t.assigned_engineers || t.assigned_engineers.length === 0) && t.status !== 'resolved'
+      ).length;
+
+      // CHANGE THESE LINES to ensure 'total_tickets' uses the actual array length:
+      setStats({
+        ...statsRes.data,
+        total_tickets: allTickets.length, // FIX: Shows total count from All Tickets page
+        unassigned_tickets: unassignedCount,
+        active_engineers: usersRes.data.length
+      });
+      
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error('Error:', err);
@@ -122,7 +142,7 @@ const AdminDashboard = () => {
                     Total Tickets
                   </Typography>
                   <Typography variant="h5">
-                    {stats.total_tickets || 0}
+                    {stats.total_tickets || 0} {/* This now uses our calculated count */}
                   </Typography>
                 </Box>
               </Box>
@@ -291,7 +311,7 @@ const AdminDashboard = () => {
           <Button
             variant="outlined"
             sx={{ mt: 1 }}
-            onClick={() => navigate('/admin/tickets?filter=unassigned')}
+            onClick={() => navigate('/admin/tickets/unassigned')} // Correctly points to your new page
           >
             View Unassigned Tickets
           </Button>

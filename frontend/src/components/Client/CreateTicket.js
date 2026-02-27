@@ -22,7 +22,7 @@ const schema = yup.object().shape({
   title: yup.string().required('Title is required').max(200),
   description: yup.string().required('Description is required'),
   category: yup.string().required('Category is required'),
-  priority: yup.string().required('Priority is required'),
+  //priority: yup.string().required('Priority is required'),
 });
 
 const CreateTicket = () => {
@@ -148,7 +148,7 @@ const CreateTicket = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            {/*<Grid item xs={12} md={6}>
               <Controller
                 name="priority"
                 control={control}
@@ -187,7 +187,7 @@ const CreateTicket = () => {
                   </TextField>
                 )}
               />
-            </Grid>
+            </Grid>*/}
 
             <Grid item xs={12}>
               <Controller

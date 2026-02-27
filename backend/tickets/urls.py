@@ -10,4 +10,8 @@ urlpatterns = [
     path('<int:ticket_id>/logs/', views.TicketLogsView.as_view(), name='ticket-logs'),
     path('messages/create/', views.MessageCreateView.as_view(), name='message-create'),
     path('dashboard/stats/', views.DashboardStatsView.as_view(), name='dashboard-stats'),
+    #path('engineer/performance/', views.EngineerPerformanceView.as_view(), name='engineer-performance'),
+    # Change this line in your urls.py
+    path('performance/', views.EngineerPerformanceView.as_view(), name='engineer-performance'),
+    
 ]

@@ -1,4 +1,10 @@
 from django.urls import path
+from .views import (
+    TicketListView, TicketCreateView, TicketDetailView, 
+    TicketAssignView, TicketMessagesView, TicketLogsView, 
+    MessageCreateView, DashboardStatsView, EngineerPerformanceView,
+    TenderScrapeView
+)
 from . import views
 
 urlpatterns = [
@@ -10,8 +16,9 @@ urlpatterns = [
     path('<int:ticket_id>/logs/', views.TicketLogsView.as_view(), name='ticket-logs'),
     path('messages/create/', views.MessageCreateView.as_view(), name='message-create'),
     path('dashboard/stats/', views.DashboardStatsView.as_view(), name='dashboard-stats'),
-    #path('engineer/performance/', views.EngineerPerformanceView.as_view(), name='engineer-performance'),
-    # Change this line in your urls.py
     path('performance/', views.EngineerPerformanceView.as_view(), name='engineer-performance'),
     
+    # Corrected: This will now be accessible at /api/tickets/tenders/
+    path('tenders/', TenderScrapeView.as_view(), name='tender-scrape'),
+    path('slas/', views.SLAListCreateView.as_view(), name='sla-list-create'),
 ]

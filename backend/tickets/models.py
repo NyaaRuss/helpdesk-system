@@ -100,3 +100,23 @@ class TicketEngineer(models.Model):
     
     def __str__(self):
         return f"{self.ticket.ticket_number} - {self.engineer.username}"
+    
+class SLA(models.Model):
+    client_name = models.CharField(max_length=255)
+    service_type = models.CharField(max_length=255)
+    date_entered = models.DateField()
+    expiry_date = models.DateField()
+    description = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=50, default="Active")
+    
+    # Track who created the record and when
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_slas')
+
+    class Meta:
+        ordering = ['expiry_date'] # Keeps expiring SLAs at the top of your lists
+        verbose_name = "SLA"
+        verbose_name_plural = "SLAs"
+
+    def __str__(self):
+        return f"{self.client_name} - {self.service_type} (Expires: {self.expiry_date})"

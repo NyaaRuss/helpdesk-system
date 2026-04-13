@@ -26,12 +26,12 @@ const DashboardLayout = ({ children }) => {
 
   const getNavItems = () => {
     const commonItems = [{ text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' }];
+    
     if (user?.user_type === 'client') {
       return [
         ...commonItems,
         { text: 'New Ticket', icon: <Add />, path: '/tickets/new' },
         { text: 'My Tickets', icon: <ListIcon />, path: '/tickets' },
-        { text: 'My SLAs', icon: <Gavel />, path: '/engineer/sla' },
       ];
     } else if (user?.user_type === 'engineer') {
       return [
@@ -71,8 +71,13 @@ const DashboardLayout = ({ children }) => {
       <Divider />
       <List>
         {getNavItems().map((item) => (
-          <ListItem button key={item.text} onClick={() => navigate(item.path)} selected={location.pathname === item.path}
-            sx={{ '&.Mui-selected': { backgroundColor: 'primary.light', color: 'primary.main', '& .MuiListItemIcon-root': { color: 'primary.main' } } }}>
+          <ListItem 
+            button 
+            key={item.text} 
+            onClick={() => navigate(item.path)} 
+            selected={location.pathname === item.path}
+            sx={{ '&.Mui-selected': { backgroundColor: 'primary.light', color: 'primary.main', '& .MuiListItemIcon-root': { color: 'primary.main' } } }}
+          >
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />
           </ListItem>

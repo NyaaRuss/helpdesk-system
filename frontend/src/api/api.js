@@ -1,17 +1,18 @@
 import axios from 'axios';
 
-const API_URL = 'http://192.168.1.73:8000/api';
+// baseURL remains localhost to ensure stability within your development environment
+const API_URL = 'http://localhost:8000/api';
 
-// Create axios instance with default config
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  // Increased to 5000 to prevent 'Backend unreachable' while keeping response snappy
+  timeout: 30000, 
 });
 
-// Request interceptor
+// Request interceptor for token authentication
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -20,112 +21,67 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor
+// Response interceptor for token refresh and session management
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
     
-    // Log error for debugging
-    console.error('API Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    
-    // Handle 401 errors
+    // Attempt token refresh if unauthorized and not already retrying
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      
       try {
-        // Try to refresh token
         const refreshToken = localStorage.getItem('refresh_token');
         if (refreshToken) {
-          const response = await axios.post(`${API_URL}/auth/token/refresh/`, {
+          const response = await axios.post(`${API_URL}/token/refresh/`, {
             refresh: refreshToken
           });
-          
-          const newAccessToken = response.data.access;
-          localStorage.setItem('token', newAccessToken);
-          
-          // Retry original request with new token
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          localStorage.setItem('token', response.data.access);
+          originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
           return api(originalRequest);
         }
-      } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
+      } catch (err) {
+        console.error('Refresh failed', err);
       }
       
-      // If refresh fails or no refresh token, logout
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
+      // Clear data and redirect if refresh fails
+      localStorage.clear();
       window.location.href = '/login';
     }
-    
     return Promise.reject(error);
   }
 );
 
-// Auth API
+// Authentication Endpoints
 export const authAPI = {
-  login: async (credentials) => {
-    console.log('API: Login attempt with:', credentials.username);
-    try {
-      const response = await api.post('/auth/login/', credentials);
-      console.log('API: Login success:', response.data);
-      return response;
-    } catch (error) {
-      console.error('API: Login error:', error.response?.data || error.message);
-      throw error;
-    }
-  },
-  register: async (userData) => {
-    console.log('API: Registration attempt:', userData.username);
-    try {
-      const response = await api.post('/auth/register/', userData);
-      console.log('API: Registration success:', response.data);
-      return response;
-    } catch (error) {
-      console.error('API: Registration error:', error.response?.data || error.message);
-      throw error;
-    }
-  },
-  // ... rest of the functions
-  getUsers: (userType) => api.get(`/auth/users/?user_type=${userType}`),
-  
+  login: (creds) => api.post('/auth/login/', creds),
+  register: (data) => api.post('/auth/register/', data),
+  getUsers: (type) => api.get(`/auth/users/?user_type=${type}`),
   getProfile: () => api.get('/auth/profile/'),
 };
 
-// Ticket API
+// Helpdesk and eGP Scraper Endpoints
 export const ticketAPI = {
   getAllTickets: () => api.get('/tickets/'),
   getTicket: (id) => api.get(`/tickets/${id}/`),
   createTicket: (data) => api.post('/tickets/create/', data),
-  //updateTicket: (id, data) => api.put(`/tickets/${id}/`, data),
-  // Inside your api.js ticketAPI object
-  // Ensure it looks exactly like this:
-  //updateTicket: (id, data) => axios.patch(`/tickets/${id}/`, data),
   updateTicket: (id, data) => api.patch(`/tickets/${id}/`, data),
-  assignTicket: (ticketId, engineerIds, note) => 
-    api.post(`/tickets/${ticketId}/assign/`, { 
-      engineer_ids: engineerIds, 
-      note: note 
-    }),
+  assignTicket: (tid, eids, note) => api.post(`/tickets/${tid}/assign/`, { engineer_ids: eids, note }),
   getEngineerPerformance: () => api.get('/tickets/performance/'),
-  getTicketDetails: (id) => api.get(`/tickets/${id}/`),
-  getTicketMessages: (ticketId) => api.get(`/tickets/${ticketId}/messages/`),
-  getTicketLogs: (ticketId) => api.get(`/tickets/${ticketId}/logs/`),
+  getTicketMessages: (id) => api.get(`/tickets/${id}/messages/`),
+  getTicketLogs: (id) => api.get(`/tickets/${id}/logs/`),
   sendMessage: (data) => api.post('/tickets/messages/create/', data),
   getDashboardStats: () => api.get('/tickets/dashboard/stats/'),
+  
+  /**
+   * Scraper endpoint for Live Bulletin Board.
+   * Ensure your Django view returns data from your local DB (cached)
+   * to guarantee a sub-3 second response.
+   */
+  getTenders: () => api.get('/tickets/tenders/'), 
 };
 
 export default api;

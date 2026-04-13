@@ -30,6 +30,9 @@ import EngineerDashboard from './components/Engineer/EngineerDashboard';
 import AvailableTickets from './components/Engineer/AvailableTickets.js';
 import Performance from './components/Engineer/Performance';
 import MyTickets from './components/Engineer/MyTicket';
+import SLAPage from './components/Engineer/SLAPage';
+import TendersPage from './components/Engineer/TendersPage';
+import LeavePage from './components/Engineer/LeavePage';
 
 
 // Create theme
@@ -150,6 +153,9 @@ function App() {
                 } />
                 {/* Redirect root to dashboard */}
                 <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="/engineer/sla" element={<SLAPage />} />
+                <Route path="/engineer/tenders" element={<TendersPage />} />
+                <Route path="/engineer/leave" element={<LeavePage />} />
               </Route>
             </Routes>
           </Router>

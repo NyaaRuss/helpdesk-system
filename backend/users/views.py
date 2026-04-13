@@ -6,11 +6,13 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from .models import User
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
+from rest_framework.permissions import AllowAny
 
 class RegisterView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
+    #permission_classes = [permissions.AllowAny]
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

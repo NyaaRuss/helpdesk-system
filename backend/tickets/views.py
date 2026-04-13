@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from playwright.sync_api import sync_playwright
 from rest_framework.permissions import AllowAny
-
+from .models import User
 from .models import Ticket, TicketEngineer, TicketLog, Message, SLA
 from .serializers import (
     TicketSerializer, TicketLogSerializer, MessageSerializer, 
@@ -190,23 +190,38 @@ class DashboardStatsView(APIView):
 class EngineerPerformanceView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
-        my_tickets = Ticket.objects.filter(assigned_engineers__engineer=user)
-        resolved = my_tickets.filter(status='resolved', updated_at__isnull=False)
+    def get(self, request, pk=None):
+        """
+        Calculates performance metrics. 
+        If pk is provided, it calculates for that specific engineer (Admin view).
+        If pk is None, it calculates for the currently logged-in user (Engineer view).
+        """
+        # Determine target user
+        target_user_id = pk if pk else request.user.id
+        target_user = get_object_or_404(User, id=target_user_id)
         
+        # Filter tickets where this user is assigned
+        my_tickets = Ticket.objects.filter(assigned_engineers__engineer=target_user)
+        resolved = my_tickets.filter(status__in=['resolved', 'closed'], updated_at__isnull=False)
+        
+        # Calculate Average Resolution Time
         avg_time = resolved.annotate(
             duration=F('updated_at') - F('created_at')
         ).aggregate(Avg('duration'))['duration__avg']
         
+        # Convert duration to hours
         avg_hours = round(avg_time.total_seconds() / 3600, 1) if avg_time else 0
-        success_rate = round((resolved.count() / my_tickets.count() * 100), 1) if my_tickets.exists() else 0
+        
+        # Calculate Success Rate
+        total_count = my_tickets.count()
+        success_rate = round((resolved.count() / total_count * 100), 1) if total_count > 0 else 0
 
         return Response({
+            'engineer_name': f"{target_user.first_name} {target_user.last_name}",
             'resolved_tickets': resolved.count(),
             'avg_resolution_time': f"{avg_hours}h",
             'success_rate': f"{success_rate}%",
-            'total_assigned': my_tickets.count()
+            'total_assigned': total_count
         })
 
 # --- EGP SCRAPER WITH ASYNC BACKGROUND FETCHING ---

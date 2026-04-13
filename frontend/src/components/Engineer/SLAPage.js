@@ -7,7 +7,6 @@ import {
 import { Navigate } from 'react-router-dom';
 import DashboardLayout from '../Layout/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
-// Corrected path: up two levels to src, then into api folder
 import api from '../../api/api'; 
 
 const SLAPage = () => {
@@ -15,9 +14,12 @@ const SLAPage = () => {
   const [slas, setSlas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  
+  // 1. ADDED 'scope' TO INITIAL STATE
   const [formData, setFormData] = useState({
     client_name: '',
     service_type: '',
+    scope: '', 
     date_entered: '',
     expiry_date: '',
     description: ''
@@ -40,7 +42,6 @@ const SLAPage = () => {
     }
   }, [user]);
 
-  // Security Check: Must be after Hooks
   if (user && user.user_type === 'client') {
     return <Navigate to="/dashboard" />;
   }
@@ -53,14 +54,16 @@ const SLAPage = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // 2. SENDING DATA TO BACKEND
       await api.post('/tickets/slas/', formData);
       await fetchSLAs();
+      // Reset form including scope
       setFormData({ 
-        client_name: '', service_type: '', date_entered: '', 
-        expiry_date: '', description: '' 
+        client_name: '', service_type: '', scope: '', 
+        date_entered: '', expiry_date: '', description: '' 
       });
     } catch (error) {
-      alert("Error saving SLA record. Please check server logs.");
+      alert("Error saving SLA record. Make sure the backend accepts 'scope' field.");
     } finally {
       setSubmitting(false);
     }
@@ -72,13 +75,9 @@ const SLAPage = () => {
     const diffTime = expiry - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) {
-      return { label: "Expired", color: "error" };
-    } else if (diffDays <= 90) {
-      return { label: "Due Soon", color: "warning" };
-    } else {
-      return { label: "Active", color: "success" };
-    }
+    if (diffDays < 0) return { label: "Expired", color: "error" };
+    if (diffDays <= 90) return { label: "Due Soon", color: "warning" };
+    return { label: "Active", color: "success" };
   };
 
   return (
@@ -92,12 +91,27 @@ const SLAPage = () => {
           <Typography variant="h6" sx={{ mb: 2, color: '#1a237e' }}>Register New SLA</Typography>
           <form onSubmit={handleAddSLA}>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <TextField fullWidth label="Client Name" name="client_name" value={formData.client_name} onChange={handleInputChange} required size="small" />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <TextField fullWidth label="Service Type" name="service_type" value={formData.service_type} onChange={handleInputChange} required size="small" />
               </Grid>
+              
+              {/* 3. SCOPE INPUT FIELD */}
+              <Grid item xs={12} md={2}>
+                <TextField 
+                  fullWidth 
+                  label="Scope" 
+                  name="scope" 
+                  value={formData.scope} 
+                  onChange={handleInputChange} 
+                  required 
+                  size="small" 
+                  placeholder="e.g. 8x5 or 24x7"
+                />
+              </Grid>
+
               <Grid item xs={12} md={2}>
                 <TextField fullWidth label="Start Date" name="date_entered" type="date" value={formData.date_entered} onChange={handleInputChange} required size="small" InputLabelProps={{ shrink: true }} />
               </Grid>
@@ -131,6 +145,10 @@ const SLAPage = () => {
                 <TableRow>
                   <TableCell sx={{ fontWeight: 'bold' }}>Client Name</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
+                  
+                  {/* 4. SCOPE TABLE HEADER (BEFORE DATES) */}
+                  <TableCell sx={{ fontWeight: 'bold' }}>Scope</TableCell>
+                  
                   <TableCell sx={{ fontWeight: 'bold' }}>Start Date</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>End Date</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
@@ -139,7 +157,7 @@ const SLAPage = () => {
               <TableBody>
                 {slas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center">No records found.</TableCell>
+                    <TableCell colSpan={6} align="center">No records found.</TableCell>
                   </TableRow>
                 ) : (
                   slas.map((sla) => {
@@ -148,6 +166,14 @@ const SLAPage = () => {
                       <TableRow key={sla.id} hover>
                         <TableCell>{sla.client_name}</TableCell>
                         <TableCell>{sla.service_type}</TableCell>
+                        
+                        {/* 5. SCOPE TABLE CELL */}
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#1a237e' }}>
+                            {sla.scope || "N/A"}
+                          </Typography>
+                        </TableCell>
+
                         <TableCell>{sla.date_entered}</TableCell>
                         <TableCell>{sla.expiry_date}</TableCell>
                         <TableCell>

@@ -8,7 +8,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Increased to 5000 to prevent 'Backend unreachable' while keeping response snappy
   timeout: 30000, 
 });
 
@@ -70,7 +69,16 @@ export const ticketAPI = {
   createTicket: (data) => api.post('/tickets/create/', data),
   updateTicket: (id, data) => api.patch(`/tickets/${id}/`, data),
   assignTicket: (tid, eids, note) => api.post(`/tickets/${tid}/assign/`, { engineer_ids: eids, note }),
+  
+  // Dashboard/Performance Endpoints
   getEngineerPerformance: () => api.get('/tickets/performance/'),
+  
+  /**
+   * Added: Allows Admins to fetch performance for a specific engineer ID.
+   * Backend URL expected: /tickets/performance/<id>/
+   */
+  getEngineerPerformanceById: (id) => api.get(`/tickets/performance/${id}/`),
+
   getTicketMessages: (id) => api.get(`/tickets/${id}/messages/`),
   getTicketLogs: (id) => api.get(`/tickets/${id}/logs/`),
   sendMessage: (data) => api.post('/tickets/messages/create/', data),
@@ -78,10 +86,14 @@ export const ticketAPI = {
   
   /**
    * Scraper endpoint for Live Bulletin Board.
-   * Ensure your Django view returns data from your local DB (cached)
-   * to guarantee a sub-3 second response.
    */
   getTenders: () => api.get('/tickets/tenders/'), 
+};
+
+// SLA Endpoints
+export const slaAPI = {
+  getSLAs: () => api.get('/tickets/slas/'),
+  createSLA: (data) => api.post('/tickets/slas/', data),
 };
 
 export default api;

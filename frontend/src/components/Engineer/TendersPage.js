@@ -16,6 +16,7 @@ const TendersPage = () => {
     setLoading(true);
     setError(null);
     try {
+      // Fetches live data from the PRAZ e-GP portal backend
       const response = await ticketAPI.getTenders();
       setTenders(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
@@ -52,7 +53,6 @@ const TendersPage = () => {
           {loading ? (
             <Box p={8} textAlign="center">
               <CircularProgress size={40} sx={{ color: '#303f9f' }} />
-              {/* FIXED: Using &lt; to prevent Babel parsing error */}
               <Typography mt={2} color="textSecondary">
                 Syncing with PRAZ Portal... (&lt; 3s)
               </Typography>
@@ -62,12 +62,13 @@ const TendersPage = () => {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    {/* Headers strictly following official eGP order to prevent date shifting */}
+                    {/* 8 Headers defined to match the official PRAZ Bulletin Board */}
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Tender Id</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Reference Number</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Tender Title</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Supplier Category</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Procuring Entity</TableCell>
+                    <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Scope</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Publish Date</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Closing Date</TableCell>
                   </TableRow>
@@ -76,6 +77,7 @@ const TendersPage = () => {
                   {tenders.length > 0 ? (
                     tenders.map((t, i) => (
                       <TableRow key={i} hover>
+                        {/* 1. Tender ID */}
                         <TableCell>
                           <Link 
                             href={`https://egp.praz.org.zw/view/${t.tenderId}`} 
@@ -85,12 +87,22 @@ const TendersPage = () => {
                             {t.tenderId}
                           </Link>
                         </TableCell>
+                        {/* 2. Reference Number */}
                         <TableCell>{t.referenceNumber}</TableCell>
+                        {/* 3. Title */}
                         <TableCell>{t.title}</TableCell>
-                        {/* Mapping the Supplier Category column to fix date alignment */}
+                        {/* 4. Category */}
                         <TableCell sx={{ fontSize: '0.7rem' }}>{t.category}</TableCell>
+                        {/* 5. Entity */}
                         <TableCell>{t.entity}</TableCell>
-                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{t.publishDate}</TableCell>
+                        
+                        {/* 6. Scope - Added to stop date shifting */}
+                        <TableCell>{t.scope || 'Open'}</TableCell>
+                        
+                        {/* 7. Publish Date */}
+                        <TableCell>{t.closingDate}</TableCell>
+                        
+                        {/* 8. Closing Date - Correctly fetching from the API */}
                         <TableCell sx={{ fontWeight: 'bold', color: '#d32f2f', whiteSpace: 'nowrap' }}>
                           {t.closingDate}
                         </TableCell>
@@ -98,7 +110,8 @@ const TendersPage = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">No active tenders found. Click Refresh.</TableCell>
+                      {/* Full colSpan to span across all 8 columns */}
+                      <TableCell colSpan={9} align="center">No active tenders found. Click Refresh.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

@@ -25,6 +25,7 @@ import EngineerManagement from './components/Admin/EngineerManagement';
 import Reports from './components/Admin/Reports';
 import UnassignedTickets from './components/Admin/UnassignedTickets';
 
+
 // Engineer components
 import EngineerDashboard from './components/Engineer/EngineerDashboard';
 import AvailableTickets from './components/Engineer/AvailableTickets.js';
@@ -123,6 +124,8 @@ function App() {
                     <Reports />
                   </DashboardLayout>
                 } />
+
+                <Route path="/admin/performance/:engineerId" element={<Performance />} />
                 
                 // Inside your Admin routes section in the Routes component
                 <Route path="/admin/tickets/unassigned" element={

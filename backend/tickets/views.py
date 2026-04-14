@@ -299,23 +299,41 @@ from rest_framework import permissions
 
 # views.py
 
+
+# --- SLA VIEWS ---
+
 class SLAListCreateView(generics.ListCreateAPIView):
+    """
+    Handles listing all SLAs and creating new ones.
+    Includes current_stage and scope fields.
+    """
     serializer_class = SLASerializer
-    # Allowing any logged-in user to save, bypassing the role check
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        # Admins and Engineers see everything; Clients see nothing (per your React logic)
         return SLA.objects.all().order_by('expiry_date')
 
     def get_serializer_context(self):
-        """
-        Passes the request to the serializer so it can access the user.
-        Without this, 'created_by' will fail to save.
-        """
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
 
     def perform_create(self, serializer):
-        # This line actually saves the record and sets you as the creator.
+        # Automatically set the creator to the logged-in user
         serializer.save(created_by=self.request.user)
+
+class SLADetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Handles 'View Progress' and stage updates.
+    GET: Fetch details for the modal.
+    PATCH: Update the current_stage (e.g., move from Baselining to Negotiation).
+    """
+    queryset = SLA.objects.all()
+    serializer_class = SLASerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        # Optional: Log the stage change in the console or a log model
+        print(f"SLA {instance.id} moved to stage {instance.current_stage}")

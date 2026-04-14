@@ -11,7 +11,7 @@ SECRET_KEY = 'django-insecure-your-secret-key-change-in-production'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*', '192.168.56.1', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['*', '192.168.56.1', 'localhost', '127.0.0.1' , '192.168.1.74']
 
 
 # Application definition
@@ -142,7 +142,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "http://192.168.56.1:3000", # your laptop’s LAN IP with frontend port
+    "http://192.168.56.1:3000", 
+    "http://192.168.1.74:3000"# your laptop’s LAN IP with frontend port
 ]
 
 CORS_ALLOW_METHODS = [

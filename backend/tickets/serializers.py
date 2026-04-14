@@ -149,16 +149,24 @@ from .models import SLA
 
 # serializers.py
 
+# serializers.py
+
 class SLASerializer(serializers.ModelSerializer):
-    # Uses your SimpleUserSerializer to show who created it
     created_by = SimpleUserSerializer(read_only=True)
+    # Define the stages as a list for consistent index tracking
+    STAGES = [
+        "Requirements & Baselining",
+        "Negotiation & Drafting",
+        "Implementation & Tooling",
+        "Operations & Monitoring",
+        "Reporting & Audit",
+        "Billing & Renewal"
+    ]
 
     class Meta:
         model = SLA
         fields = [
-            'id', 'client_name', 'service_type', 'date_entered', 
-            'expiry_date', 'description', 'status', 'created_by'
+            'id', 'client_name', 'service_type', 'scope', 'date_entered', 
+            'expiry_date', 'description', 'status', 'created_by', 'current_stage'
         ]
-        # Important: Mark created_by as read_only so the frontend 
-        # doesn't have to send a User ID manually.
         read_only_fields = ['id', 'created_by']

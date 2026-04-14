@@ -6,6 +6,7 @@ from .views import (
     TenderScrapeView
 )
 from . import views
+from .views import SLAListCreateView, SLADetailView
 
 urlpatterns = [
     path('', views.TicketListView.as_view(), name='ticket-list'),
@@ -21,5 +22,7 @@ urlpatterns = [
     path('performance/<int:pk>/', EngineerPerformanceView.as_view(), name='engineer_performance_detail'),
     # Corrected: This will now be accessible at /api/tickets/tenders/
     path('tenders/', TenderScrapeView.as_view(), name='tender-scrape'),
-    path('slas/', views.SLAListCreateView.as_view(), name='sla-list-create'),
+    #path('slas/', views.SLAListCreateView.as_view(), name='sla-list-create'),
+    path('slas/', SLAListCreateView.as_view(), name='sla-list'),
+    path('slas/<int:pk>/', SLADetailView.as_view(), name='sla-detail'),
 ]

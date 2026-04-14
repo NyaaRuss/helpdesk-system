@@ -4,8 +4,8 @@ import {
   LinearProgress, Alert, Button,
 } from '@mui/material';
 import {
-  People, Assignment, Warning, CheckCircle,
-  AccessTime, BarChart, ListAlt, DoneAll,
+  People, Assignment, Warning,
+  AccessTime, BarChart, ListAlt, DoneAll, PersonAdd,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { ticketAPI, authAPI } from '../../api/api';
@@ -22,33 +22,50 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [statsRes, ticketsRes, usersRes] = await Promise.all([
-        ticketAPI.getDashboardStats(),
-        ticketAPI.getAllTickets(),
-        authAPI.getUsers('engineer')
-      ]);
-
-      const allTickets = ticketsRes.data;
+      // Fetch dashboard stats
+      const statsRes = await ticketAPI.getDashboardStats();
+      
+      // Fetch all tickets
+      const ticketsRes = await ticketAPI.getAllTickets();
+      const allTickets = ticketsRes.data || [];
+      
+      // Try to fetch engineers, but don't fail if it doesn't work
+      let engineers = [];
+      try {
+        const usersRes = await authAPI.getUsers('engineer');
+        engineers = usersRes.data || [];
+      } catch (err) {
+        console.warn('Could not fetch engineers:', err);
+        // Don't set error here, just continue with empty engineers list
+      }
       
       const unassignedCount = allTickets.filter(
-        t => (!t.assigned_engineers || t.assigned_engineers.length === 0) && t.status !== 'resolved'
+        t => (!t.assigned_engineers || t.assigned_engineers.length === 0) && t.status !== 'resolved' && t.status !== 'closed'
       ).length;
 
       const resolvedCount = allTickets.filter(
         t => t.status === 'resolved' || t.status === 'closed'
       ).length;
+      
+      const openTickets = allTickets.filter(t => t.status === 'open').length;
+      
+      // Get high priority tickets count
+      const highPriorityCount = allTickets.filter(
+        t => t.priority === 'high' || t.priority === 'critical'
+      ).length;
 
       setStats({
-        ...statsRes.data,
         total_tickets: allTickets.length,
         unassigned_tickets: unassignedCount,
         resolved_tickets: resolvedCount,
-        active_engineers: usersRes.data.length
+        open_tickets: openTickets,
+        high_priority_tickets: highPriorityCount,
+        active_engineers: engineers.length
       });
       
     } catch (err) {
-      setError('Failed to load dashboard data');
-      console.error('Error:', err);
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -57,11 +74,19 @@ const AdminDashboard = () => {
   const quickActions = [
     { title: 'All Tickets', description: 'View and manage all tickets', icon: <ListAlt />, color: 'primary', action: () => navigate('/admin/tickets') },
     { title: 'Manage Users', description: 'View and manage all users', icon: <People />, color: 'secondary', action: () => navigate('/admin/users') },
-    { title: 'Engineers', description: 'Manage engineers and assignments', icon: <Assignment />, color: 'info', action: () => navigate('/admin/engineers') },
+    { title: 'Engineers/Sales', description: 'Manage engineers and assignments', icon: <Assignment />, color: 'info', action: () => navigate('/admin/engineers') },
+    { title: 'Add New User', description: 'Create admin, engineer, or client accounts', icon: <PersonAdd />, color: 'success', action: () => navigate('/register') },
     { title: 'Reports', description: 'View system reports and analytics', icon: <BarChart />, color: 'warning', action: () => navigate('/admin/reports') },
   ];
 
-  if (loading) return <LinearProgress />;
+  if (loading) {
+    return (
+      <Box sx={{ width: '100%', mt: 4 }}>
+        <LinearProgress />
+        <Typography sx={{ mt: 2, textAlign: 'center' }}>Loading dashboard data...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -75,9 +100,13 @@ const AdminDashboard = () => {
       </Box>
 
       {/* ERROR MESSAGE FOR API FAILURES */}
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
 
-      {/* CRITICAL ALERT: Changed to "error" (Red) */}
+      {/* CRITICAL ALERT */}
       {stats.unassigned_tickets > 0 && (
         <Alert 
           severity="error" 
@@ -189,7 +218,7 @@ const AdminDashboard = () => {
       <Typography variant="h5" gutterBottom sx={{ mt: 4, mb: 2 }}>Quick Actions</Typography>
       <Grid container spacing={3}>
         {quickActions.map((action, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid item xs={12} sm={6} md={2.4} key={index}>
             <Paper
               sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}
               onClick={action.action}

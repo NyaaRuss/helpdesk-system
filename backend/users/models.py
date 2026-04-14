@@ -13,6 +13,13 @@ class User(AbstractUser):
     department = models.CharField(max_length=100, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     
+    # Password reset fields
+    reset_code = models.CharField(max_length=6, blank=True, null=True)
+    reset_code_created_at = models.DateTimeField(blank=True, null=True)
+    
+    # Make email unique
+    email = models.EmailField(unique=True)  # Add unique=True
+    
     def __str__(self):
         return f"{self.username} ({self.get_user_type_display()})"
 

@@ -2,7 +2,7 @@ import random
 import string
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Ticket, TicketEngineer, TicketLog, Message, Assignment
+from .models import Ticket, TicketEngineer, TicketLog, Message, Assignment, SLA
 
 User = get_user_model()
 
@@ -89,11 +89,12 @@ class TicketSerializer(serializers.ModelSerializer):
             title=validated_data['title'],
             description=validated_data['description'],
             category=validated_data['category'],
-            priority=validated_data.get('priority', 'medium'),
+            priority=validated_data.get('priority', 'medium'),  # Default to medium
             client=request.user,
             status='open'
         )
         return ticket
+
 # 4. Ticket Log Serializer
 class TicketLogSerializer(serializers.ModelSerializer):
     user = SimpleUserSerializer(read_only=True)
@@ -124,33 +125,43 @@ class AssignmentSerializer(serializers.ModelSerializer):
         fields = ['id', 'ticket', 'engineer', 'assigned_by', 'assigned_at', 'note']
         read_only_fields = ['id', 'assigned_at', 'assigned_by']
 
-# 7. Simple Ticket Serializer - ALSO ALLOW STATUS HERE IF USED IN VIEWS
+# 7. Simple Ticket Serializer - Used for creating tickets
 class SimpleTicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields = ['title', 'description', 'category', 'priority', 'status'] # Added status
+        fields = ['title', 'description', 'category', 'priority', 'status']
+        extra_kwargs = {
+            'priority': {'required': False},  # Priority is not required, will default to medium
+            'status': {'required': False}     # Status is not required, will default to open
+        }
     
     def create(self, validated_data):
         request = self.context.get('request')
-        random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        ticket_number = f"TICKET-{random_chars}"
-        return Ticket.objects.create(
+        
+        # Generate a unique ticket number
+        while True:
+            random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            ticket_number = f"TICKET-{random_chars}"
+            if not Ticket.objects.filter(ticket_number=ticket_number).exists():
+                break
+        
+        # If priority is not provided, default to 'medium'
+        priority = validated_data.get('priority', 'medium')
+        
+        # Create the ticket
+        ticket = Ticket.objects.create(
             ticket_number=ticket_number,
             title=validated_data['title'],
             description=validated_data['description'],
             category=validated_data['category'],
-            priority=validated_data.get('priority', 'medium'),
+            priority=priority,
             client=request.user,
             status='open'
         )
-    
+        
+        return ticket
+
 # 8. SLA Serializer
-from .models import SLA
-
-# serializers.py
-
-# serializers.py
-
 class SLASerializer(serializers.ModelSerializer):
     created_by = SimpleUserSerializer(read_only=True)
     # Define the stages as a list for consistent index tracking

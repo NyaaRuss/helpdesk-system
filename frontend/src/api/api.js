@@ -66,7 +66,14 @@ export const authAPI = {
 export const ticketAPI = {
   getAllTickets: () => api.get('/tickets/'),
   getTicket: (id) => api.get(`/tickets/${id}/`),
-  createTicket: (data) => api.post('/tickets/create/', data),
+  createTicket: async (data) => {
+    const response = await api.post('/tickets/create/', data);
+    // Ensure the response always has an id field
+    if (response.data && !response.data.id && response.data.ticket) {
+      response.data.id = response.data.ticket.id;
+    }
+    return response;
+  },
   updateTicket: (id, data) => api.patch(`/tickets/${id}/`, data),
   assignTicket: (tid, eids, note) => api.post(`/tickets/${tid}/assign/`, { engineer_ids: eids, note }),
   

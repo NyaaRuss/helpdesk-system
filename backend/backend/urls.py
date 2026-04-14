@@ -12,6 +12,11 @@ def welcome_view(request):
             'admin': '/admin/',
             'api_auth': '/api/auth/',
             'api_tickets': '/api/tickets/',
+            'password_reset': {
+                'request': '/api/auth/password-reset-request/',
+                'verify': '/api/auth/verify-reset-code/',
+                'reset': '/api/auth/reset-password/'
+            }
         },
         'documentation': 'Use the API endpoints to interact with the system'
     })
@@ -20,7 +25,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
     path('api/tickets/', include('tickets.urls')),
-    path('', welcome_view, name='welcome'),  # Add this line
+    path('', welcome_view, name='welcome'),
 ]
 
 if settings.DEBUG:

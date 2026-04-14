@@ -5,5 +5,10 @@ urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='register'),
     path('login/', views.LoginView.as_view(), name='login'),
     path('profile/', views.UserProfileView.as_view(), name='profile'),
-    path('users/', views.UserListView.as_view(), name='user-list'),
+    path('users/', views.UserListView.as_view(), name='user-list'),  # This is correct
+    
+    # Password Reset URLs
+    path('password-reset-request/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('verify-reset-code/', views.VerifyResetCodeView.as_view(), name='verify-reset-code'),
+    path('reset-password/', views.ResetPasswordView.as_view(), name='reset-password'),
 ]

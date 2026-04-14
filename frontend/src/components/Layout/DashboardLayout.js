@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon, Dashboard, Add, List as ListIcon, People,
-  Notifications, Assignment, BarChart, Engineering, Gavel, EventNote, WorkOutline
+  Notifications, Assignment, BarChart, Engineering, Gavel, EventNote, WorkOutline, PersonAdd
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -36,6 +36,7 @@ const DashboardLayout = ({ children }) => {
     } else if (user?.user_type === 'engineer') {
       return [
         ...commonItems,
+        { text: 'New Ticket', icon: <Add />, path: '/tickets/new' },  // ADD THIS
         { text: 'Assigned Tickets', icon: <Assignment />, path: '/engineer/tickets?filter=mine' },
         { text: 'SLA Management', icon: <Gavel />, path: '/engineer/sla' },
         { text: 'Leave Days', icon: <EventNote />, path: '/engineer/leave' },
@@ -45,9 +46,11 @@ const DashboardLayout = ({ children }) => {
     } else if (user?.user_type === 'admin') {
       return [
         ...commonItems,
+        { text: 'New Ticket', icon: <Add />, path: '/tickets/new' },  // ADD THIS
         { text: 'All Tickets', icon: <ListIcon />, path: '/admin/tickets' },
         { text: 'Users', icon: <People />, path: '/admin/users' },
-        { text: 'Engineers', icon: <Engineering />, path: '/admin/engineers' },
+        { text: 'Engineers/Sales', icon: <Engineering />, path: '/admin/engineers' },
+        { text: 'Add New User', icon: <PersonAdd />, path: '/register' },
         { text: 'SLA Management', icon: <Gavel />, path: '/engineer/sla' },
         { text: 'Leave Management', icon: <EventNote />, path: '/engineer/leave' },
         { text: 'Tender Tracking', icon: <WorkOutline />, path: '/engineer/tenders' },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -16,6 +16,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import DashboardLayout from '../Layout/DashboardLayout';
 
 const schema = yup.object().shape({
   username: yup.string()
@@ -39,14 +40,22 @@ const schema = yup.object().shape({
     .nullable(),
 });
 
-const Register = () => {
+const RegisterContent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
-  const { register: registerUser } = useAuth();
+  const { register: registerUser, user } = useAuth();
   const navigate = useNavigate();
+
+  // Check if current user is admin (when logged in)
+  useEffect(() => {
+    if (user && user.user_type === 'admin') {
+      setIsAdmin(true);
+    }
+  }, [user]);
 
   const { control, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: yupResolver(schema),
@@ -62,11 +71,21 @@ const Register = () => {
     },
   });
 
-  const userTypes = [
-    { value: 'client', label: 'Client' },
-    { value: 'engineer', label: 'Engineer' },
-    { value: 'admin', label: 'Administrator' },
-  ];
+  // User types based on whether admin is logged in or not
+  const getUserTypes = () => {
+    if (isAdmin) {
+      return [
+        { value: 'client', label: 'Client' },
+        { value: 'engineer', label: 'Engineer / Sales' },
+        { value: 'admin', label: 'Administrator' },
+      ];
+    } else {
+      // Non-logged in users or clients can only register as client
+      return [
+        { value: 'client', label: 'Client' },
+      ];
+    }
+  };
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -95,7 +114,14 @@ const Register = () => {
       reset();
       
       setTimeout(() => {
-        navigate('/dashboard');
+        if (isAdmin) {
+          // If admin created user, stay on register page to create more
+          setSuccess(false);
+          reset();
+          setError('');
+        } else {
+          navigate('/dashboard');
+        }
       }, 2000);
     } else {
       // Handle API errors
@@ -127,7 +153,8 @@ const Register = () => {
     setLoading(false);
   };
 
-  return (
+  // Different layout for admin vs non-admin
+  const RegistrationForm = () => (
     <Container component="main" maxWidth="sm">
       <Box
         sx={{
@@ -146,7 +173,7 @@ const Register = () => {
           }}
         >
           <Typography component="h1" variant="h5" align="center" sx={{ mb: 3 }}>
-            Create Account
+            {isAdmin ? 'Create New User' : 'Create Account'}
           </Typography>
 
           {error && (
@@ -157,7 +184,7 @@ const Register = () => {
 
           {success && (
             <Alert severity="success" sx={{ mb: 3 }}>
-              Registration successful! Redirecting to dashboard...
+              {isAdmin ? 'User created successfully! You can create another user.' : 'Registration successful! Redirecting to dashboard...'}
             </Alert>
           )}
 
@@ -290,7 +317,7 @@ const Register = () => {
                   helperText={errors.user_type?.message}
                   disabled={loading}
                 >
-                  {userTypes.map((option) => (
+                  {getUserTypes().map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>
@@ -324,37 +351,77 @@ const Register = () => {
               disabled={loading}
               startIcon={loading && <CircularProgress size={20} />}
             >
-              {loading ? 'Creating Account...' : 'Sign Up'}
+              {loading ? (isAdmin ? 'Creating User...' : 'Creating Account...') : (isAdmin ? 'Create User' : 'Sign Up')}
             </Button>
 
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Already have an account?{' '}
-                <Link component={RouterLink} to="/login" variant="body2">
-                  Sign in
-                </Link>
-              </Typography>
-            </Box>
+            {!isAdmin && (
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Already have an account?{' '}
+                  <Link component={RouterLink} to="/login" variant="body2">
+                    Sign in
+                  </Link>
+                </Typography>
+              </Box>
+            )}
 
-            <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-              <Typography variant="body2" color="text.secondary" align="center">
-                Test Accounts (if available):
-              </Typography>
-              <Typography variant="caption" color="text.secondary" align="center" display="block">
-                Client: client1 / password123
-              </Typography>
-              <Typography variant="caption" color="text.secondary" align="center" display="block">
-                Engineer: engineer1 / password123
-              </Typography>
-              <Typography variant="caption" color="text.secondary" align="center" display="block">
-                Admin: admin / admin123 or Nyasha / nyasha123
-              </Typography>
-            </Box>
+            {isAdmin && (
+              <Box sx={{ textAlign: 'center', mt: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  <Link component={RouterLink} to="/admin/users" variant="body2">
+                    Back to User Management
+                  </Link>
+                </Typography>
+              </Box>
+            )}
+
+            {!isAdmin && (
+              <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                <Typography variant="body2" color="text.secondary" align="center">
+                  Test Accounts (if available):
+                </Typography>
+                <Typography variant="caption" color="text.secondary" align="center" display="block">
+                  Client: client1 / password123
+                </Typography>
+                <Typography variant="caption" color="text.secondary" align="center" display="block">
+                  Engineer: engineer1 / password123
+                </Typography>
+                <Typography variant="caption" color="text.secondary" align="center" display="block">
+                  Admin: admin / admin123 or Nyasha / nyasha123
+                </Typography>
+              </Box>
+            )}
           </form>
         </Paper>
       </Box>
     </Container>
   );
+
+  // If admin is logged in, wrap with DashboardLayout
+  if (isAdmin) {
+    return (
+      <DashboardLayout>
+        <RegistrationForm />
+      </DashboardLayout>
+    );
+  }
+
+  // For non-admin users, return just the form without layout
+  return <RegistrationForm />;
+};
+
+const Register = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  // If user is already logged in and not admin, redirect to dashboard
+  useEffect(() => {
+    if (user && user.user_type !== 'admin') {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+  
+  return <RegisterContent />;
 };
 
 export default Register;

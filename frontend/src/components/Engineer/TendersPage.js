@@ -70,7 +70,7 @@ const TendersPage = () => {
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Procuring Entity</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Scope</TableCell>
                     <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Publish Date</TableCell>
-                    <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Closing Date</TableCell>
+                    {/* 8 Headers defined to match the official PRAZ Bulletin Board <TableCell sx={{ bgcolor: '#303f9f', color: 'white', fontWeight: 'bold' }}>Closing Date</TableCell>*/}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -99,9 +99,9 @@ const TendersPage = () => {
                         {/* 6. Scope - Added to stop date shifting */}
                         <TableCell>{t.scope || 'Open'}</TableCell>
                         
-                        {/* 7. Publish Date */}
+                        {/* 7. Publish Date 
                         <TableCell>{t.closingDate}</TableCell>
-                        
+                        */}
                         {/* 8. Closing Date - Correctly fetching from the API */}
                         <TableCell sx={{ fontWeight: 'bold', color: '#d32f2f', whiteSpace: 'nowrap' }}>
                           {t.closingDate}

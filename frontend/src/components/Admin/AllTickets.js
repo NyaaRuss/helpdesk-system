@@ -4,10 +4,11 @@ import {
   TableHead, TableRow, TablePagination, Chip, IconButton, TextField,
   MenuItem, Select, Button, Alert, CircularProgress, Tooltip, Grid, 
   Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, 
-  Checkbox, Badge,
+  Checkbox, Badge, Divider, FormControl, InputLabel
 } from '@mui/material';
 import {
-  Search, Refresh, Group, Chat, DoneAll, CheckCircle, PersonAdd
+  Search, Refresh, Group, Chat, DoneAll, CheckCircle, PersonAdd,
+  PersonRemove, Close, Add
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ticketAPI, authAPI } from '../../api/api';
@@ -17,7 +18,6 @@ const AllTickets = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // PARSE URL PARAMS: Extracts ?status=resolved from the URL
   const queryParams = new URLSearchParams(location.search);
   const initialStatus = queryParams.get('status') || 'all';
 
@@ -25,6 +25,7 @@ const AllTickets = () => {
   const [engineers, setEngineers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [priorityFilter] = useState('all');
@@ -38,6 +39,16 @@ const AllTickets = () => {
   const [assignNote, setAssignNote] = useState('');
   const [assigning, setAssigning] = useState(false);
 
+  // New state for remove engineer dialog
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [removeEngineerId, setRemoveEngineerId] = useState(null);
+  const [removeEngineerName, setRemoveEngineerName] = useState('');
+
+  // New state for add single engineer dialog
+  const [addEngineerDialogOpen, setAddEngineerDialogOpen] = useState(false);
+  const [singleEngineerId, setSingleEngineerId] = useState('');
+  const [addingEngineer, setAddingEngineer] = useState(false);
+
   useEffect(() => {
     fetchData();
     fetchProfile();
@@ -45,7 +56,6 @@ const AllTickets = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Update filter if URL changes while component is mounted
   useEffect(() => {
     const status = new URLSearchParams(location.search).get('status');
     if (status) setStatusFilter(status);
@@ -75,22 +85,33 @@ const AllTickets = () => {
 
       setTickets(updatedTickets);
       setEngineers(engineersRes.data);
-    } catch (err) { setError('Failed to load data'); }
-    finally { setLoading(false); }
+    } catch (err) { 
+      setError('Failed to load data'); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleMarkAsDone = async (ticketId) => {
     try {
       await ticketAPI.updateTicket(ticketId, { status: 'resolved' });
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'resolved' } : t));
-    } catch (err) { setError('Update failed'); }
+      setSuccess('Ticket marked as resolved');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { 
+      setError('Update failed'); 
+    }
   };
 
   const handlePriorityChange = async (ticketId, newPriority) => {
     try {
       await ticketAPI.updateTicket(ticketId, { priority: newPriority });
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, priority: newPriority } : t));
-    } catch (err) { setError('Priority update failed'); }
+      setSuccess('Priority updated');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { 
+      setError('Priority update failed'); 
+    }
   };
 
   const handleAssignTicket = (ticket) => {
@@ -104,9 +125,78 @@ const AllTickets = () => {
     try {
       await ticketAPI.assignTicket(selectedTicket.id, selectedEngineerIds, assignNote);
       setAssignDialogOpen(false);
+      setAssignNote('');
       fetchData();
-    } catch (err) { setError('Assignment failed'); }
-    finally { setAssigning(false); }
+      setSuccess('Engineers assigned successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { 
+      setError('Assignment failed'); 
+    } finally { 
+      setAssigning(false); 
+    }
+  };
+
+  // Handle removing an engineer from a ticket
+  const handleRemoveEngineer = (ticket, engineerId, engineerName) => {
+    setSelectedTicket(ticket);
+    setRemoveEngineerId(engineerId);
+    setRemoveEngineerName(engineerName);
+    setRemoveDialogOpen(true);
+  };
+
+  const confirmRemoveEngineer = async () => {
+    setAssigning(true);
+    try {
+      const currentEngineerIds = selectedTicket.assigned_engineers?.map(item => item.engineer.id) || [];
+      const updatedEngineerIds = currentEngineerIds.filter(id => id !== removeEngineerId);
+      
+      await ticketAPI.assignTicket(selectedTicket.id, updatedEngineerIds, `Removed engineer: ${removeEngineerName}`);
+      setRemoveDialogOpen(false);
+      fetchData();
+      setSuccess(`Removed ${removeEngineerName} from ticket`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { 
+      setError('Failed to remove engineer'); 
+    } finally { 
+      setAssigning(false); 
+    }
+  };
+
+  // Handle adding a single engineer to a ticket
+  const handleAddEngineer = (ticket) => {
+    setSelectedTicket(ticket);
+    setSingleEngineerId('');
+    setAddEngineerDialogOpen(true);
+  };
+
+  const confirmAddEngineer = async () => {
+    if (!singleEngineerId) {
+      setError('Please select an engineer');
+      return;
+    }
+    
+    setAddingEngineer(true);
+    try {
+      const currentEngineerIds = selectedTicket.assigned_engineers?.map(item => item.engineer.id) || [];
+      if (currentEngineerIds.includes(singleEngineerId)) {
+        setError('Engineer is already assigned to this ticket');
+        setAddingEngineer(false);
+        return;
+      }
+      
+      const updatedEngineerIds = [...currentEngineerIds, singleEngineerId];
+      const engineerName = engineers.find(e => e.id === singleEngineerId)?.username;
+      
+      await ticketAPI.assignTicket(selectedTicket.id, updatedEngineerIds, `Added engineer: ${engineerName}`);
+      setAddEngineerDialogOpen(false);
+      fetchData();
+      setSuccess(`Added ${engineerName} to ticket`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { 
+      setError('Failed to add engineer'); 
+    } finally { 
+      setAddingEngineer(false); 
+    }
   };
 
   const getStatusChip = (status) => {
@@ -114,9 +204,16 @@ const AllTickets = () => {
       open: { label: 'Open', color: 'error' },
       in_progress: { label: 'In Progress', color: 'warning' },
       resolved: { label: 'Resolved', color: 'success' },
+      closed: { label: 'Closed', color: 'default' },
+      pending_client: { label: 'Pending Client', color: 'info' },
     };
     const s = config[status] || { label: status, color: 'default' };
     return <Chip label={s.label} color={s.color} size="small" variant="outlined" />;
+  };
+
+  const getAvailableEngineers = () => {
+    const assignedIds = selectedTicket?.assigned_engineers?.map(item => item.engineer.id) || [];
+    return engineers.filter(eng => !assignedIds.includes(eng.id));
   };
 
   const filteredTickets = tickets.filter(ticket => {
@@ -127,9 +224,7 @@ const AllTickets = () => {
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'resolved' ? (ticket.status === 'resolved' || ticket.status === 'closed') : ticket.status === statusFilter);
     
-    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus;
   });
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
@@ -141,7 +236,8 @@ const AllTickets = () => {
         <Button variant="contained" startIcon={<Refresh />} onClick={() => fetchData()}>Refresh</Button>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={2}>
@@ -199,23 +295,54 @@ const AllTickets = () => {
                 <TableCell>{getStatusChip(ticket.status)}</TableCell>
                 <TableCell>{ticket.client?.username || 'N/A'}</TableCell>
                 <TableCell>
-                  {ticket.assigned_engineers?.map(item => (
-                    <Chip key={item.id} label={item.engineer.username} size="small" sx={{ m: 0.3 }} />
-                  ))}
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+                    {ticket.assigned_engineers?.map(item => (
+                      <Chip 
+                        key={item.id} 
+                        label={item.engineer.username} 
+                        size="small" 
+                        sx={{ m: 0.3 }}
+                        onDelete={currentUser?.user_type === 'admin' ? () => handleRemoveEngineer(ticket, item.engineer.id, item.engineer.username) : undefined}
+                        deleteIcon={<PersonRemove />}
+                      />
+                    ))}
+                    {currentUser?.user_type === 'admin' && (
+                      <IconButton 
+                        size="small" 
+                        color="primary" 
+                        onClick={() => handleAddEngineer(ticket)}
+                        sx={{ ml: 0.5 }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
                 </TableCell>
                 <TableCell>{format(new Date(ticket.created_at), 'MMM dd, HH:mm')}</TableCell>
                 <TableCell align="center">
                   <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                    <IconButton onClick={() => navigate(`/tickets/${ticket.id}`)}>
-                      <Badge color="error" variant="dot" invisible={!ticket.has_unread_messages}><Chat fontSize="small" /></Badge>
-                    </IconButton>
+                    <Tooltip title="View Details">
+                      <IconButton onClick={() => navigate(`/tickets/${ticket.id}`)}>
+                        <Badge color="error" variant="dot" invisible={!ticket.has_unread_messages}>
+                          <Chat fontSize="small" />
+                        </Badge>
+                      </IconButton>
+                    </Tooltip>
                     {ticket.status === 'resolved' || ticket.status === 'closed' ? (
                         <CheckCircle color="success" sx={{ p: 0.5 }} fontSize="small" />
                     ) : (
-                        <IconButton color="success" size="small" onClick={() => handleMarkAsDone(ticket.id)}><DoneAll fontSize="small" /></IconButton>
+                        <Tooltip title="Mark as Resolved">
+                          <IconButton color="success" size="small" onClick={() => handleMarkAsDone(ticket.id)}>
+                            <DoneAll fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                     )}
                     {currentUser?.user_type === 'admin' && (
-                      <IconButton size="small" onClick={() => handleAssignTicket(ticket)}><Group fontSize="small" /></IconButton>
+                      <Tooltip title="Manage Assignments">
+                        <IconButton size="small" onClick={() => handleAssignTicket(ticket)}>
+                          <Group fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     )}
                   </Box>
                 </TableCell>
@@ -223,27 +350,109 @@ const AllTickets = () => {
             ))}
           </TableBody>
         </Table>
-        <TablePagination component="div" count={filteredTickets.length} rowsPerPage={rowsPerPage} page={page} onPageChange={(e, n) => setPage(n)} />
+        <TablePagination 
+          component="div" 
+          count={filteredTickets.length} 
+          rowsPerPage={rowsPerPage} 
+          page={page} 
+          onPageChange={(e, n) => setPage(n)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 25]}
+        />
       </TableContainer>
 
+      {/* Bulk Assignment Dialog */}
       <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Manage Assignment: #{selectedTicket?.ticket_number}</DialogTitle>
         <DialogContent>
-          <Box sx={{ mt: 1 }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
+            Current Engineers:
+          </Typography>
+          <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {selectedTicket?.assigned_engineers?.map(item => (
+              <Chip key={item.id} label={item.engineer.username} size="small" />
+            ))}
+            {(!selectedTicket?.assigned_engineers || selectedTicket.assigned_engineers.length === 0) && (
+              <Typography variant="body2" color="textSecondary">No engineers assigned</Typography>
+            )}
+          </Box>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" gutterBottom>
+            Select Engineers to Assign:
+          </Typography>
+          <Box sx={{ mt: 1, maxHeight: 300, overflow: 'auto' }}>
             {engineers.map(eng => (
               <FormControlLabel
                 key={eng.id}
-                control={<Checkbox checked={selectedEngineerIds.includes(eng.id)} onChange={() => {
-                  setSelectedEngineerIds(prev => prev.includes(eng.id) ? prev.filter(id => id !== eng.id) : [...prev, eng.id]);
-                }} />}
-                label={eng.username}
+                control={
+                  <Checkbox 
+                    checked={selectedEngineerIds.includes(eng.id)} 
+                    onChange={() => {
+                      setSelectedEngineerIds(prev => 
+                        prev.includes(eng.id) ? prev.filter(id => id !== eng.id) : [...prev, eng.id]
+                      );
+                    }} 
+                  />
+                }
+                label={`${eng.first_name} ${eng.last_name} (@${eng.username})`}
               />
             ))}
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAssignSubmit} disabled={assigning}>Save</Button>
+          <Button variant="contained" onClick={handleAssignSubmit} disabled={assigning}>
+            {assigning ? <CircularProgress size={24} /> : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Remove Engineer Confirmation Dialog */}
+      <Dialog open={removeDialogOpen} onClose={() => setRemoveDialogOpen(false)}>
+        <DialogTitle>Remove Engineer</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to remove <strong>{removeEngineerName}</strong> from ticket <strong>#{selectedTicket?.ticket_number}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRemoveDialogOpen(false)}>Cancel</Button>
+          <Button onClick={confirmRemoveEngineer} color="error" variant="contained" disabled={assigning}>
+            {assigning ? <CircularProgress size={24} /> : 'Remove'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Single Engineer Dialog */}
+      <Dialog open={addEngineerDialogOpen} onClose={() => setAddEngineerDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Add Engineer to Ticket #{selectedTicket?.ticket_number}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Current Engineers: {selectedTicket?.assigned_engineers?.map(e => e.engineer.username).join(', ') || 'None'}
+          </Typography>
+          <FormControl fullWidth sx={{ mt: 1 }}>
+            <InputLabel>Select Engineer</InputLabel>
+            <Select
+              value={singleEngineerId}
+              onChange={(e) => setSingleEngineerId(e.target.value)}
+              label="Select Engineer"
+            >
+              {getAvailableEngineers().map(eng => (
+                <MenuItem key={eng.id} value={eng.id}>
+                  {eng.first_name} {eng.last_name} (@{eng.username})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddEngineerDialogOpen(false)}>Cancel</Button>
+          <Button onClick={confirmAddEngineer} variant="contained" disabled={!singleEngineerId || addingEngineer}>
+            {addingEngineer ? <CircularProgress size={24} /> : 'Add Engineer'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -169,10 +169,13 @@ CORS_ALLOW_HEADERS = [
 
 # Add this to avoid preflight issues
 CORS_ALLOW_PRIVATE_NETWORK = True
-# Email settings (for notifications)
+
+# Email settings (for notifications and password reset)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
+EMAIL_HOST_USER = 'nyasharusenazhou@gmail.com'  # Your email
+EMAIL_HOST_PASSWORD = 'uarireehpbsolfih'  # You need to add an App Password (not your regular password)
+DEFAULT_FROM_EMAIL = 'nyasharusenazhou@gmail.com'
+FRONTEND_URL = 'http://localhost:3000'

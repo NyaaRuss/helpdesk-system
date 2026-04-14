@@ -2,6 +2,11 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone  # Add this import
+import random
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -32,19 +37,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         if User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError({"username": "Username already exists."})
         
-        # Check if email already exists
-        if User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError({"email": "Email already exists."})
+        # Check if email already exists (case-insensitive)
+        if User.objects.filter(email__iexact=attrs['email']).exists():
+            raise serializers.ValidationError({"email": "A user with this email already exists."})
         
         return attrs
     
     def create(self, validated_data):
-        # Remove password2 from validated_data
         validated_data.pop('password2')
         
         user = User.objects.create_user(
             username=validated_data['username'],
-            email=validated_data['email'],
+            email=validated_data['email'].lower(),
             password=validated_data['password'],
             user_type=validated_data.get('user_type', 'client'),
             first_name=validated_data.get('first_name', ''),
@@ -65,13 +69,11 @@ class LoginSerializer(serializers.Serializer):
         if not username or not password:
             raise serializers.ValidationError("Must include 'username' and 'password'.")
         
-        # First try to authenticate with username
         user = authenticate(username=username, password=password)
         
-        # If that fails, try to find by email
         if user is None:
             try:
-                user_obj = User.objects.get(email=username)
+                user_obj = User.objects.get(email__iexact=username)
                 user = authenticate(username=user_obj.username, password=password)
             except User.DoesNotExist:
                 user = None
@@ -83,4 +85,74 @@ class LoginSerializer(serializers.Serializer):
         else:
             raise serializers.ValidationError("Unable to log in with provided credentials.")
         
+        return data
+
+# Password Reset Serializers - FIXED TIMEZONE ISSUE
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email__iexact=value)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("No user found with this email address")
+        except User.MultipleObjectsReturned:
+            raise serializers.ValidationError("Multiple users found. Please contact support.")
+        return value
+
+class VerifyResetCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(max_length=6)
+    
+    def validate(self, data):
+        try:
+            user = User.objects.get(email__iexact=data['email'])
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"email": "No user found with this email address"})
+        except User.MultipleObjectsReturned:
+            raise serializers.ValidationError({"email": "Multiple users found. Please contact support."})
+        
+        if not user.reset_code or user.reset_code != data['code']:
+            raise serializers.ValidationError({"code": "Invalid reset code"})
+        
+        if user.reset_code_created_at:
+            # Make both datetimes timezone-aware
+            expiration_time = user.reset_code_created_at + timedelta(minutes=15)
+            now = timezone.now()  # Use timezone.now() instead of datetime.now()
+            
+            if now > expiration_time:
+                raise serializers.ValidationError({"code": "Reset code has expired. Please request a new one."})
+        
+        data['user'] = user
+        return data
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(max_length=6)
+    new_password = serializers.CharField(min_length=6, write_only=True)
+    confirm_password = serializers.CharField(min_length=6, write_only=True)
+    
+    def validate(self, data):
+        try:
+            user = User.objects.get(email__iexact=data['email'])
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"email": "No user found with this email address"})
+        except User.MultipleObjectsReturned:
+            raise serializers.ValidationError({"email": "Multiple users found. Please contact support."})
+        
+        if not user.reset_code or user.reset_code != data['code']:
+            raise serializers.ValidationError({"code": "Invalid reset code"})
+        
+        if user.reset_code_created_at:
+            # Make both datetimes timezone-aware
+            expiration_time = user.reset_code_created_at + timedelta(minutes=15)
+            now = timezone.now()  # Use timezone.now() instead of datetime.now()
+            
+            if now > expiration_time:
+                raise serializers.ValidationError({"code": "Reset code has expired. Please request a new one."})
+        
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
+        
+        data['user'] = user
         return data

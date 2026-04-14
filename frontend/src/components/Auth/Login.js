@@ -188,6 +188,14 @@ const Login = () => {
               </Typography>
             </Box>
 
+            <Box sx={{ textAlign: 'center', mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                <Link component={RouterLink} to="/forgot-password" variant="body2">
+                  Forgot Password?
+                </Link>
+              </Typography>
+            </Box>
+
             <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}>
               <Typography variant="body2" color="text.secondary" align="center">
                 Test Accounts:

@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Import components
 import Login from './components/Auth/Login';
+import ForgotPassword from './components/Auth/ForgotPassword';
 import Register from './components/Auth/Register';
 import PrivateRoute from './components/Auth/PrivateRoute';
 import DashboardLayout from './components/Layout/DashboardLayout';
@@ -74,11 +75,12 @@ function App() {
         <AuthProvider>
           <Router>
             <Routes>
-              {/* Public routes */}
+              {/* Public routes - No authentication required */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               
-              {/* Protected routes */}
+              {/* Protected routes - Authentication required */}
               <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={
                   <DashboardLayout>
@@ -127,7 +129,6 @@ function App() {
 
                 <Route path="/admin/performance/:engineerId" element={<Performance />} />
                 
-                // Inside your Admin routes section in the Routes component
                 <Route path="/admin/tickets/unassigned" element={
                   <DashboardLayout>
                     <UnassignedTickets />
@@ -135,14 +136,12 @@ function App() {
                 } />
                 
                 {/* Engineer routes */}
-                {/* Engineer routes */}
                 <Route path="/engineer/tickets" element={
                   <DashboardLayout>
                     <MyTickets /> 
                   </DashboardLayout>
                 } />
 
-                {/* FIX: Only one route for performance, pointing to the correct component */}
                 <Route path="/engineer/performance" element={
                   <DashboardLayout>
                     <Performance />
@@ -154,11 +153,13 @@ function App() {
                     <AvailableTickets />
                   </DashboardLayout>
                 } />
-                {/* Redirect root to dashboard */}
-                <Route path="/" element={<Navigate to="/dashboard" />} />
+                
                 <Route path="/engineer/sla" element={<SLAPage />} />
                 <Route path="/engineer/tenders" element={<TendersPage />} />
                 <Route path="/engineer/leave" element={<LeavePage />} />
+                
+                {/* Redirect root to dashboard */}
+                <Route path="/" element={<Navigate to="/dashboard" />} />
               </Route>
             </Routes>
           </Router>

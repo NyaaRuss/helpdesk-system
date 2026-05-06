@@ -1,18 +1,32 @@
 import random
 import string
+import re
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Ticket, TicketEngineer, TicketLog, Message, Assignment, SLA
 
 User = get_user_model()
 
-# 1. Simple User serializer for nested representations
+def get_next_ticket_number():
+    """Generate sequential ticket number: TICKET-1, TICKET-2, etc."""
+    last_ticket = Ticket.objects.order_by('-id').first()
+    
+    if last_ticket and last_ticket.ticket_number:
+        match = re.search(r'TICKET-(\d+)', last_ticket.ticket_number)
+        if match:
+            next_num = int(match.group(1)) + 1
+        else:
+            next_num = Ticket.objects.count() + 1
+    else:
+        next_num = 1
+    
+    return f"TICKET-{next_num}"
+
 class SimpleUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'user_type']
 
-# 2. Ticket Engineer Serializer
 class TicketEngineerSerializer(serializers.ModelSerializer):
     engineer = SimpleUserSerializer(read_only=True)
     
@@ -21,19 +35,12 @@ class TicketEngineerSerializer(serializers.ModelSerializer):
         fields = ['id', 'engineer', 'assigned_at', 'is_primary']
         read_only_fields = ['id', 'assigned_at']
 
-# 3. Main Ticket Serializer - THIS IS THE ONE USED FOR UPDATES
 class TicketSerializer(serializers.ModelSerializer):
-    """
-    Main Ticket Serializer used for viewing and updating tickets.
-    Fixed to permit status and priority updates from the frontend.
-    """
     client = SimpleUserSerializer(read_only=True)
     assigned_engineers = TicketEngineerSerializer(many=True, read_only=True)
     assigned_engineers_details = serializers.SerializerMethodField()
     
-    # Explicitly define status to ensure the ChoiceField is handled correctly during PATCH
     status = serializers.ChoiceField(choices=Ticket.STATUS_CHOICES, required=False)
-    # Explicitly define priority for the same reason
     priority = serializers.ChoiceField(choices=Ticket.PRIORITY_CHOICES, required=False)
 
     class Meta:
@@ -42,24 +49,18 @@ class TicketSerializer(serializers.ModelSerializer):
             'id', 'ticket_number', 'title', 'description',
             'client', 'assigned_engineers', 'assigned_engineers_details', 
             'priority', 'status', 'category', 'created_at', 'updated_at',
-            'resolved_at'
+            'resolved_at', 'is_escalated', 'escalation_reason', 'progress_percentage'
         ]
-        # These fields remain locked to prevent client/system tampering
         read_only_fields = [
             'id', 'ticket_number', 'client', 'created_at', 
-            'updated_at', 'resolved_at'
+            'updated_at', 'resolved_at', 'is_escalated', 'progress_percentage'
         ]
-        # Force status and priority to be writable to resolve the update error
         extra_kwargs = {
             'status': {'read_only': False},
             'priority': {'read_only': False}
         }
 
     def get_assigned_engineers_details(self, obj):
-        """
-        Helper method to provide flat engineer details for the frontend dashboard.
-        """
-        # Checks if assigned_engineers exists to prevent performance dashboard errors
         if hasattr(obj, 'assigned_engineers'):
             return [
                 {
@@ -71,31 +72,6 @@ class TicketSerializer(serializers.ModelSerializer):
             ]
         return []
 
-    def create(self, validated_data):
-        """
-        Handles ticket creation with automatic ticket number generation.
-        """
-        request = self.context.get('request')
-        
-        # Generate a unique ticket number
-        while True:
-            random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            ticket_number = f"TICKET-{random_chars}"
-            if not Ticket.objects.filter(ticket_number=ticket_number).exists():
-                break
-        
-        ticket = Ticket.objects.create(
-            ticket_number=ticket_number,
-            title=validated_data['title'],
-            description=validated_data['description'],
-            category=validated_data['category'],
-            priority=validated_data.get('priority', 'medium'),  # Default to medium
-            client=request.user,
-            status='open'
-        )
-        return ticket
-
-# 4. Ticket Log Serializer
 class TicketLogSerializer(serializers.ModelSerializer):
     user = SimpleUserSerializer(read_only=True)
     class Meta:
@@ -103,19 +79,17 @@ class TicketLogSerializer(serializers.ModelSerializer):
         fields = ['id', 'ticket', 'user', 'action', 'details', 'timestamp']
         read_only_fields = ['id', 'timestamp']
 
-# 5. Message Serializer
 class MessageSerializer(serializers.ModelSerializer):
     sender = SimpleUserSerializer(read_only=True)
     class Meta:
         model = Message
-        fields = ['id', 'ticket', 'sender', 'content', 'timestamp', 'is_read']
-        read_only_fields = ['id', 'timestamp', 'is_read', 'sender']
+        fields = ['id', 'ticket', 'sender', 'content', 'timestamp', 'is_read', 'is_from_email', 'is_internal']
+        read_only_fields = ['id', 'timestamp', 'is_read', 'sender', 'is_from_email']
     
     def create(self, validated_data):
         request = self.context.get('request')
         return Message.objects.create(**validated_data, sender=request.user)
 
-# 6. Assignment Serializer
 class AssignmentSerializer(serializers.ModelSerializer):
     engineer = SimpleUserSerializer(read_only=True)
     assigned_by = SimpleUserSerializer(read_only=True)
@@ -125,30 +99,20 @@ class AssignmentSerializer(serializers.ModelSerializer):
         fields = ['id', 'ticket', 'engineer', 'assigned_by', 'assigned_at', 'note']
         read_only_fields = ['id', 'assigned_at', 'assigned_by']
 
-# 7. Simple Ticket Serializer - Used for creating tickets
 class SimpleTicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = ['title', 'description', 'category', 'priority', 'status']
         extra_kwargs = {
-            'priority': {'required': False},  # Priority is not required, will default to medium
-            'status': {'required': False}     # Status is not required, will default to open
+            'priority': {'required': False},
+            'status': {'required': False}
         }
     
     def create(self, validated_data):
         request = self.context.get('request')
-        
-        # Generate a unique ticket number
-        while True:
-            random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            ticket_number = f"TICKET-{random_chars}"
-            if not Ticket.objects.filter(ticket_number=ticket_number).exists():
-                break
-        
-        # If priority is not provided, default to 'medium'
+        ticket_number = get_next_ticket_number()
         priority = validated_data.get('priority', 'medium')
         
-        # Create the ticket
         ticket = Ticket.objects.create(
             ticket_number=ticket_number,
             title=validated_data['title'],
@@ -158,13 +122,18 @@ class SimpleTicketSerializer(serializers.ModelSerializer):
             client=request.user,
             status='open'
         )
-        
         return ticket
 
-# 8. SLA Serializer
+# tickets/serializers.py - Update SLASerializer
+
 class SLASerializer(serializers.ModelSerializer):
     created_by = SimpleUserSerializer(read_only=True)
-    # Define the stages as a list for consistent index tracking
+    assigned_engineers = SimpleUserSerializer(many=True, read_only=True)
+    assigned_engineer_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
     STAGES = [
         "Requirements & Baselining",
         "Negotiation & Drafting",
@@ -178,6 +147,27 @@ class SLASerializer(serializers.ModelSerializer):
         model = SLA
         fields = [
             'id', 'client_name', 'service_type', 'scope', 'date_entered', 
-            'expiry_date', 'description', 'status', 'created_by', 'current_stage'
+            'expiry_date', 'description', 'status', 'created_by', 'current_stage',
+            'assigned_engineers', 'assigned_engineer_ids'
         ]
         read_only_fields = ['id', 'created_by']
+
+    def create(self, validated_data):
+        assigned_engineer_ids = validated_data.pop('assigned_engineer_ids', [])
+        sla = SLA.objects.create(**validated_data)
+        if assigned_engineer_ids:
+            engineers = User.objects.filter(id__in=assigned_engineer_ids, user_type='engineer')
+            sla.assigned_engineers.set(engineers)
+        return sla
+
+    def update(self, instance, validated_data):
+        assigned_engineer_ids = validated_data.pop('assigned_engineer_ids', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        if assigned_engineer_ids is not None:
+            engineers = User.objects.filter(id__in=assigned_engineer_ids, user_type='engineer')
+            instance.assigned_engineers.set(engineers)
+        
+        return instance

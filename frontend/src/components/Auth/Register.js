@@ -1,3 +1,4 @@
+// src/components/Auth/Register.jsx
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -10,7 +11,18 @@ import {
   MenuItem,
   Link,
   CircularProgress,
+  Grid,
+  Stack,
 } from '@mui/material';
+import {
+  PersonAdd,
+  Email,
+  Lock,
+  Person,
+  Phone,
+  Badge,
+  Assignment,
+} from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -40,6 +52,690 @@ const schema = yup.object().shape({
     .nullable(),
 });
 
+// Public Registration Form with Background Effects - SCALED to 78%
+const PublicRegistrationForm = ({ isAdmin, loading, error, success, onSubmit, control, errors, getUserTypes }) => (
+  <Box
+    sx={{
+      minHeight: '100vh',
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+      overflow: 'hidden',
+    }}
+  >
+    {/* Frolgate Logo as Watermark - Full size background */}
+    <Box
+      sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        opacity: 0.1,
+        zIndex: 0,
+        pointerEvents: 'none',
+        textAlign: 'center',
+        width: '100%',
+      }}
+    >
+      <img 
+        src="/frolgate logo vector.png" 
+        alt="Frolgate Logo"
+        style={{
+          maxWidth: '500px',
+          width: '70%',
+          height: 'auto',
+          filter: 'brightness(0) invert(1)',
+        }}
+      />
+    </Box>
+
+    {/* Floating animated shapes - Background effects */}
+    <Box
+      sx={{
+        position: 'absolute',
+        top: '10%',
+        left: '5%',
+        width: '300px',
+        height: '300px',
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.05)',
+        animation: 'float 20s infinite',
+        '@keyframes float': {
+          '0%, 100%': { transform: 'translate(0, 0) rotate(0deg)' },
+          '50%': { transform: 'translate(50px, 50px) rotate(180deg)' },
+        },
+      }}
+    />
+    <Box
+      sx={{
+        position: 'absolute',
+        bottom: '10%',
+        right: '5%',
+        width: '200px',
+        height: '200px',
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.05)',
+        animation: 'float 15s infinite reverse',
+      }}
+    />
+
+    {/* Content wrapper - SCALED to 78% */}
+    <Box
+      sx={{
+        width: '100%',
+        transform: 'scale(0.78)',
+        transformOrigin: 'center center',
+      }}
+    >
+      <Container component="main" maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
+        <Grid container spacing={4} alignItems="center">
+          {/* Left side - Info section */}
+          <Grid item xs={12} md={5}>
+            <Box sx={{ px: 3 }}>
+              <Box sx={{ mb: 4 }}>
+                <img 
+                  src="/frolgate logo vector.png" 
+                  alt="Frolgate"
+                  style={{
+                    height: '70px',
+                    width: 'auto',
+                    filter: 'brightness(0) invert(1)',
+                  }}
+                />
+              </Box>
+              
+              <Typography
+                variant="h3"
+                sx={{
+                  fontWeight: 'bold',
+                  mb: 2,
+                  color: 'white',
+                  fontSize: { xs: '2rem', md: '2.2rem' },
+                }}
+              >
+                Join Us Today
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  mb: 4,
+                  color: 'rgba(255,255,255,0.9)',
+                  fontWeight: 'normal',
+                }}
+              >
+                Create an account to start managing your support tickets
+              </Typography>
+
+              <Stack spacing={2}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ color: 'rgba(255,255,255,0.8)' }}>✓</Box>
+                  <Typography sx={{ color: 'white' }}>Track your support tickets</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ color: 'rgba(255,255,255,0.8)' }}>✓</Box>
+                  <Typography sx={{ color: 'white' }}>Get real-time updates</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ color: 'rgba(255,255,255,0.8)' }}>✓</Box>
+                  <Typography sx={{ color: 'white' }}>24/7 support availability</Typography>
+                </Box>
+              </Stack>
+            </Box>
+          </Grid>
+
+          {/* Right side - Registration Form */}
+          <Grid item xs={12} md={7}>
+            <Paper
+              elevation={24}
+              sx={{
+                padding: { xs: 3, md: 4 },
+                width: '100%',
+                maxWidth: '550px',
+                borderRadius: 3,
+                backgroundColor: 'white',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                mx: 'auto',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 65,
+                  height: 65,
+                  background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 2,
+                  mx: 'auto',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)',
+                }}
+              >
+                <PersonAdd sx={{ color: 'white', fontSize: 32 }} />
+              </Box>
+              
+              <Typography 
+                component="h1" 
+                variant="h4" 
+                sx={{ 
+                  mb: 1, 
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                }}
+              >
+                Create Account
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+                Fill in your details to get started
+              </Typography>
+
+              {error && (
+                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                  {error}
+                </Alert>
+              )}
+
+              {success && (
+                <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+                  Registration successful! Redirecting to dashboard...
+                </Alert>
+              )}
+
+              <form onSubmit={onSubmit}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+                  <Controller
+                    name="first_name"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="First Name"
+                        fullWidth
+                        size="small"
+                        error={!!errors.first_name}
+                        helperText={errors.first_name?.message}
+                        disabled={loading}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    name="last_name"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Last Name"
+                        fullWidth
+                        size="small"
+                        error={!!errors.last_name}
+                        helperText={errors.last_name?.message}
+                        disabled={loading}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                      />
+                    )}
+                  />
+                </Box>
+
+                <Controller
+                  name="username"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Username"
+                      fullWidth
+                      margin="dense"
+                      size="small"
+                      error={!!errors.username}
+                      helperText={errors.username?.message}
+                      disabled={loading}
+                      autoComplete="username"
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                      InputProps={{
+                        startAdornment: <Person sx={{ mr: 1, color: '#1565c0', fontSize: '0.9rem' }} />,
+                      }}
+                    />
+                  )}
+                />
+
+                <Controller
+                  name="email"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Email"
+                      type="email"
+                      fullWidth
+                      margin="dense"
+                      size="small"
+                      error={!!errors.email}
+                      helperText={errors.email?.message}
+                      disabled={loading}
+                      autoComplete="email"
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                      InputProps={{
+                        startAdornment: <Email sx={{ mr: 1, color: '#1565c0', fontSize: '0.9rem' }} />,
+                      }}
+                    />
+                  )}
+                />
+
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1, mb: 1 }}>
+                  <Controller
+                    name="password"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Password"
+                        type="password"
+                        fullWidth
+                        size="small"
+                        error={!!errors.password}
+                        helperText={errors.password?.message}
+                        disabled={loading}
+                        autoComplete="new-password"
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                        InputProps={{
+                          startAdornment: <Lock sx={{ mr: 1, color: '#1565c0', fontSize: '0.9rem' }} />,
+                        }}
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    name="password2"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label="Confirm Password"
+                        type="password"
+                        fullWidth
+                        size="small"
+                        error={!!errors.password2}
+                        helperText={errors.password2?.message}
+                        disabled={loading}
+                        autoComplete="new-password"
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                        InputProps={{
+                          startAdornment: <Lock sx={{ mr: 1, color: '#1565c0', fontSize: '0.9rem' }} />,
+                        }}
+                      />
+                    )}
+                  />
+                </Box>
+
+                <Controller
+                  name="user_type"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      select
+                      label="User Type"
+                      fullWidth
+                      margin="dense"
+                      size="small"
+                      error={!!errors.user_type}
+                      helperText={errors.user_type?.message}
+                      disabled={loading}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    >
+                      {getUserTypes().map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {option.icon}
+                            {option.label}
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                />
+
+                <Controller
+                  name="phone"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Phone Number (optional)"
+                      fullWidth
+                      margin="dense"
+                      size="small"
+                      error={!!errors.phone}
+                      helperText={errors.phone?.message}
+                      disabled={loading}
+                      autoComplete="tel"
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                      InputProps={{
+                        startAdornment: <Phone sx={{ mr: 1, color: '#1565c0', fontSize: '0.9rem' }} />,
+                      }}
+                    />
+                  )}
+                />
+
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  sx={{
+                    mt: 2,
+                    mb: 1.5,
+                    py: 1,
+                    background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #0d47a1 0%, #0a3d8f 100%)',
+                    },
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Sign Up'}
+                </Button>
+
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Already have an account?{' '}
+                    <Link component={RouterLink} to="/login" variant="caption" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
+                      Sign in
+                    </Link>
+                  </Typography>
+                </Box>
+              </form>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Footer */}
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem' }}>
+            © {new Date().getFullYear()} Frolgate Help Desk. All rights reserved.
+          </Typography>
+        </Box>
+      </Container>
+    </Box>
+  </Box>
+);
+
+// Admin Registration Form (embedded in DashboardLayout - no background effects)
+const AdminRegistrationForm = ({ isAdmin, loading, error, success, onSubmit, control, errors, getUserTypes }) => (
+  <Container component="main" maxWidth="md" sx={{ py: 4 }}>
+    <Paper
+      elevation={3}
+      sx={{
+        padding: { xs: 3, md: 4 },
+        width: '100%',
+        maxWidth: '600px',
+        borderRadius: 2,
+        backgroundColor: 'white',
+        mx: 'auto',
+      }}
+    >
+      <Box
+        sx={{
+          width: 60,
+          height: 60,
+          background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          mb: 2,
+          mx: 'auto',
+        }}
+      >
+        <PersonAdd sx={{ color: 'white', fontSize: 30 }} />
+      </Box>
+      
+      <Typography 
+        component="h1" 
+        variant="h4" 
+        sx={{ 
+          mb: 1, 
+          fontWeight: 'bold',
+          textAlign: 'center',
+          color: '#1a237e',
+        }}
+      >
+        Create New User
+      </Typography>
+      
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+        Fill in the details to add a new user to the system
+      </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+          User created successfully! You can create another user.
+        </Alert>
+      )}
+
+      <form onSubmit={onSubmit}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+          <Controller
+            name="first_name"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="First Name"
+                fullWidth
+                size="small"
+                error={!!errors.first_name}
+                helperText={errors.first_name?.message}
+                disabled={loading}
+              />
+            )}
+          />
+
+          <Controller
+            name="last_name"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Last Name"
+                fullWidth
+                size="small"
+                error={!!errors.last_name}
+                helperText={errors.last_name?.message}
+                disabled={loading}
+              />
+            )}
+          />
+        </Box>
+
+        <Controller
+          name="username"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Username"
+              fullWidth
+              margin="dense"
+              size="small"
+              error={!!errors.username}
+              helperText={errors.username?.message}
+              disabled={loading}
+              autoComplete="username"
+              InputProps={{
+                startAdornment: <Person sx={{ mr: 1, color: '#1565c0' }} />,
+              }}
+            />
+          )}
+        />
+
+        <Controller
+          name="email"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Email"
+              type="email"
+              fullWidth
+              margin="dense"
+              size="small"
+              error={!!errors.email}
+              helperText={errors.email?.message}
+              disabled={loading}
+              autoComplete="email"
+              InputProps={{
+                startAdornment: <Email sx={{ mr: 1, color: '#1565c0' }} />,
+              }}
+            />
+          )}
+        />
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 1, mb: 1 }}>
+          <Controller
+            name="password"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Password"
+                type="password"
+                fullWidth
+                size="small"
+                error={!!errors.password}
+                helperText={errors.password?.message}
+                disabled={loading}
+                autoComplete="new-password"
+                InputProps={{
+                  startAdornment: <Lock sx={{ mr: 1, color: '#1565c0' }} />,
+                }}
+              />
+            )}
+          />
+
+          <Controller
+            name="password2"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Confirm Password"
+                type="password"
+                fullWidth
+                size="small"
+                error={!!errors.password2}
+                helperText={errors.password2?.message}
+                disabled={loading}
+                autoComplete="new-password"
+                InputProps={{
+                  startAdornment: <Lock sx={{ mr: 1, color: '#1565c0' }} />,
+                }}
+              />
+            )}
+          />
+        </Box>
+
+        <Controller
+          name="user_type"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              label="User Type"
+              fullWidth
+              margin="dense"
+              size="small"
+              error={!!errors.user_type}
+              helperText={errors.user_type?.message}
+              disabled={loading}
+            >
+              {getUserTypes().map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {option.icon}
+                    {option.label}
+                  </Box>
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
+
+        <Controller
+          name="phone"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Phone Number (optional)"
+              fullWidth
+              margin="dense"
+              size="small"
+              error={!!errors.phone}
+              helperText={errors.phone?.message}
+              disabled={loading}
+              autoComplete="tel"
+              InputProps={{
+                startAdornment: <Phone sx={{ mr: 1, color: '#1565c0' }} />,
+              }}
+            />
+          )}
+        />
+
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          sx={{
+            mt: 2,
+            mb: 1.5,
+            py: 1,
+            background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+            borderRadius: 2,
+            textTransform: 'none',
+            fontSize: '0.9rem',
+            fontWeight: 'bold',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #0d47a1 0%, #0a3d8f 100%)',
+            },
+          }}
+          disabled={loading}
+        >
+          {loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Create User'}
+        </Button>
+
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            <Link component={RouterLink} to="/admin/users" variant="body2" sx={{ color: '#1565c0' }}>
+              Back to User Management
+            </Link>
+          </Typography>
+        </Box>
+      </form>
+    </Paper>
+  </Container>
+);
+
 const RegisterContent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,7 +746,6 @@ const RegisterContent = () => {
   const { register: registerUser, user } = useAuth();
   const navigate = useNavigate();
 
-  // Check if current user is admin (when logged in)
   useEffect(() => {
     if (user && user.user_type === 'admin') {
       setIsAdmin(true);
@@ -71,18 +766,16 @@ const RegisterContent = () => {
     },
   });
 
-  // User types based on whether admin is logged in or not
   const getUserTypes = () => {
     if (isAdmin) {
       return [
-        { value: 'client', label: 'Client' },
-        { value: 'engineer', label: 'Engineer / Sales' },
-        { value: 'admin', label: 'Administrator' },
+        { value: 'client', label: 'Client', icon: <Person /> },
+        { value: 'engineer', label: 'Engineer / Sales', icon: <Assignment /> },
+        { value: 'admin', label: 'Administrator', icon: <Badge /> },
       ];
     } else {
-      // Non-logged in users or clients can only register as client
       return [
-        { value: 'client', label: 'Client' },
+        { value: 'client', label: 'Client', icon: <Person /> },
       ];
     }
   };
@@ -92,8 +785,6 @@ const RegisterContent = () => {
     setError('');
     setSuccess(false);
     setApiError(null);
-
-    console.log('Registration data:', data);
 
     const userData = {
       username: data.username,
@@ -107,7 +798,6 @@ const RegisterContent = () => {
     };
 
     const result = await registerUser(userData);
-    console.log('Registration result:', result);
     
     if (result.success) {
       setSuccess(true);
@@ -115,7 +805,6 @@ const RegisterContent = () => {
       
       setTimeout(() => {
         if (isAdmin) {
-          // If admin created user, stay on register page to create more
           setSuccess(false);
           reset();
           setError('');
@@ -124,7 +813,6 @@ const RegisterContent = () => {
         }
       }, 2000);
     } else {
-      // Handle API errors
       if (result.error) {
         if (typeof result.error === 'string') {
           setError(result.error);
@@ -133,7 +821,6 @@ const RegisterContent = () => {
         } else if (result.error.non_field_errors) {
           setError(result.error.non_field_errors[0]);
         } else {
-          // Handle field-specific errors
           const fieldErrors = [];
           for (const [field, messages] of Object.entries(result.error)) {
             if (Array.isArray(messages)) {
@@ -153,268 +840,43 @@ const RegisterContent = () => {
     setLoading(false);
   };
 
-  // Different layout for admin vs non-admin
-  const RegistrationForm = () => (
-    <Container component="main" maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 4,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper
-          elevation={3}
-          sx={{
-            padding: 4,
-            width: '100%',
-            borderRadius: 2,
-          }}
-        >
-          <Typography component="h1" variant="h5" align="center" sx={{ mb: 3 }}>
-            {isAdmin ? 'Create New User' : 'Create Account'}
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
-
-          {success && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              {isAdmin ? 'User created successfully! You can create another user.' : 'Registration successful! Redirecting to dashboard...'}
-            </Alert>
-          )}
-
-          {apiError && (
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              <Typography variant="body2">
-                <strong>API Error Details:</strong>
-              </Typography>
-              <Typography variant="body2">
-                {JSON.stringify(apiError, null, 2)}
-              </Typography>
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
-              <Controller
-                name="first_name"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="First Name"
-                    fullWidth
-                    error={!!errors.first_name}
-                    helperText={errors.first_name?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-
-              <Controller
-                name="last_name"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Last Name"
-                    fullWidth
-                    error={!!errors.last_name}
-                    helperText={errors.last_name?.message}
-                    disabled={loading}
-                  />
-                )}
-              />
-            </Box>
-
-            <Controller
-              name="username"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Username"
-                  fullWidth
-                  margin="normal"
-                  error={!!errors.username}
-                  helperText={errors.username?.message}
-                  disabled={loading}
-                  autoComplete="username"
-                />
-              )}
-            />
-
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Email"
-                  type="email"
-                  fullWidth
-                  margin="normal"
-                  error={!!errors.email}
-                  helperText={errors.email?.message}
-                  disabled={loading}
-                  autoComplete="email"
-                />
-              )}
-            />
-
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2, mb: 2 }}>
-              <Controller
-                name="password"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Password"
-                    type="password"
-                    fullWidth
-                    error={!!errors.password}
-                    helperText={errors.password?.message}
-                    disabled={loading}
-                    autoComplete="new-password"
-                  />
-                )}
-              />
-
-              <Controller
-                name="password2"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Confirm Password"
-                    type="password"
-                    fullWidth
-                    error={!!errors.password2}
-                    helperText={errors.password2?.message}
-                    disabled={loading}
-                    autoComplete="new-password"
-                  />
-                )}
-              />
-            </Box>
-
-            <Controller
-              name="user_type"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  select
-                  label="User Type"
-                  fullWidth
-                  margin="normal"
-                  error={!!errors.user_type}
-                  helperText={errors.user_type?.message}
-                  disabled={loading}
-                >
-                  {getUserTypes().map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
-            />
-
-            <Controller
-              name="phone"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Phone Number (optional)"
-                  fullWidth
-                  margin="normal"
-                  error={!!errors.phone}
-                  helperText={errors.phone?.message}
-                  disabled={loading}
-                  autoComplete="tel"
-                />
-              )}
-            />
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
-              disabled={loading}
-              startIcon={loading && <CircularProgress size={20} />}
-            >
-              {loading ? (isAdmin ? 'Creating User...' : 'Creating Account...') : (isAdmin ? 'Create User' : 'Sign Up')}
-            </Button>
-
-            {!isAdmin && (
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Already have an account?{' '}
-                  <Link component={RouterLink} to="/login" variant="body2">
-                    Sign in
-                  </Link>
-                </Typography>
-              </Box>
-            )}
-
-            {isAdmin && (
-              <Box sx={{ textAlign: 'center', mt: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  <Link component={RouterLink} to="/admin/users" variant="body2">
-                    Back to User Management
-                  </Link>
-                </Typography>
-              </Box>
-            )}
-
-            {!isAdmin && (
-              <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                <Typography variant="body2" color="text.secondary" align="center">
-                  Test Accounts (if available):
-                </Typography>
-                <Typography variant="caption" color="text.secondary" align="center" display="block">
-                  Client: client1 / password123
-                </Typography>
-                <Typography variant="caption" color="text.secondary" align="center" display="block">
-                  Engineer: engineer1 / password123
-                </Typography>
-                <Typography variant="caption" color="text.secondary" align="center" display="block">
-                  Admin: admin / admin123 or Nyasha / nyasha123
-                </Typography>
-              </Box>
-            )}
-          </form>
-        </Paper>
-      </Box>
-    </Container>
-  );
-
-  // If admin is logged in, wrap with DashboardLayout
+  // If admin is logged in, render inside DashboardLayout (no background effects)
   if (isAdmin) {
     return (
       <DashboardLayout>
-        <RegistrationForm />
+        <AdminRegistrationForm 
+          isAdmin={isAdmin}
+          loading={loading}
+          error={error}
+          success={success}
+          onSubmit={handleSubmit(onSubmit)}
+          control={control}
+          errors={errors}
+          getUserTypes={getUserTypes}
+        />
       </DashboardLayout>
     );
   }
 
-  // For non-admin users, return just the form without layout
-  return <RegistrationForm />;
+  // For public registration (non-logged in users), show background effects
+  return (
+    <PublicRegistrationForm 
+      isAdmin={isAdmin}
+      loading={loading}
+      error={error}
+      success={success}
+      onSubmit={handleSubmit(onSubmit)}
+      control={control}
+      errors={errors}
+      getUserTypes={getUserTypes}
+    />
+  );
 };
 
 const Register = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // If user is already logged in and not admin, redirect to dashboard
   useEffect(() => {
     if (user && user.user_type !== 'admin') {
       navigate('/dashboard');

@@ -11,6 +11,8 @@ import ForgotPassword from './components/Auth/ForgotPassword';
 import Register from './components/Auth/Register';
 import PrivateRoute from './components/Auth/PrivateRoute';
 import DashboardLayout from './components/Layout/DashboardLayout';
+import ProfilePage from './components/Profile/ProfilePage';
+
 
 // Client components
 import ClientDashboard from './components/Client/ClientDashboard';
@@ -29,7 +31,7 @@ import UnassignedTickets from './components/Admin/UnassignedTickets';
 
 // Engineer components
 import EngineerDashboard from './components/Engineer/EngineerDashboard';
-import AvailableTickets from './components/Engineer/AvailableTickets.js';
+
 import Performance from './components/Engineer/Performance';
 import MyTickets from './components/Engineer/MyTicket';
 import SLAPage from './components/Engineer/SLAPage';
@@ -148,11 +150,7 @@ function App() {
                   </DashboardLayout>
                 } />
 
-                <Route path="/engineer/available" element={
-                  <DashboardLayout>
-                    <AvailableTickets />
-                  </DashboardLayout>
-                } />
+                
                 
                 <Route path="/engineer/sla" element={<SLAPage />} />
                 <Route path="/engineer/tenders" element={<TendersPage />} />
@@ -160,6 +158,7 @@ function App() {
                 
                 {/* Redirect root to dashboard */}
                 <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="/profile" element={<ProfilePage />} />
               </Route>
             </Routes>
           </Router>

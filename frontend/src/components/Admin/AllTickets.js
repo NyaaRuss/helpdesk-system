@@ -1,18 +1,19 @@
+// src/components/Admin/AllTickets.js
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TablePagination, Chip, IconButton, TextField,
   MenuItem, Select, Button, Alert, CircularProgress, Tooltip, Grid, 
   Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, 
-  Checkbox, Badge, Divider, FormControl, InputLabel
+  Checkbox, Divider, FormControl, InputLabel, Badge
 } from '@mui/material';
 import {
-  Search, Refresh, Group, Chat, DoneAll, CheckCircle, PersonAdd,
-  PersonRemove, Close, Add
+  Search, Refresh, Group, Chat, DoneAll, CheckCircle,
+  PersonRemove, Add, Visibility, Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ticketAPI, authAPI } from '../../api/api';
 import { format } from 'date-fns';
+import { ticketAPI, authAPI } from '../../api/api';
 
 const AllTickets = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const AllTickets = () => {
   
   const queryParams = new URLSearchParams(location.search);
   const initialStatus = queryParams.get('status') || 'all';
+  const initialPriority = queryParams.get('priority') || 'all';
 
   const [tickets, setTickets] = useState([]);
   const [engineers, setEngineers] = useState([]);
@@ -28,7 +30,9 @@ const AllTickets = () => {
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [priorityFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState(initialPriority);
+  const [selectedPriorities, setSelectedPriorities] = useState([]);
+  const [priorityAnchorEl, setPriorityAnchorEl] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentUser, setCurrentUser] = useState(null);
@@ -39,17 +43,38 @@ const AllTickets = () => {
   const [assignNote, setAssignNote] = useState('');
   const [assigning, setAssigning] = useState(false);
 
-  // New state for remove engineer dialog
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [removeEngineerId, setRemoveEngineerId] = useState(null);
   const [removeEngineerName, setRemoveEngineerName] = useState('');
 
-  // New state for add single engineer dialog
   const [addEngineerDialogOpen, setAddEngineerDialogOpen] = useState(false);
   const [singleEngineerId, setSingleEngineerId] = useState('');
   const [addingEngineer, setAddingEngineer] = useState(false);
 
+  // NEW: Delete Ticket Dialog State
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingTicket, setDeletingTicket] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const priorityOptions = [
+    { value: 'low', label: 'Low', color: '#4caf50' },
+    { value: 'medium', label: 'Medium', color: '#ff9800' },
+    { value: 'high', label: 'High', color: '#f44336' },
+    { value: 'critical', label: 'Critical', color: '#d32f2f' },
+  ];
+
   useEffect(() => {
+    // Parse initial priority from URL (supports comma-separated values)
+    if (initialPriority && initialPriority !== 'all') {
+      const priorities = initialPriority.split(',');
+      setSelectedPriorities(priorities);
+      setPriorityFilter('custom');
+    } else {
+      setSelectedPriorities([]);
+      setPriorityFilter('all');
+    }
+    
     fetchData();
     fetchProfile();
     const interval = setInterval(() => fetchData(false), 10000);
@@ -58,7 +83,16 @@ const AllTickets = () => {
 
   useEffect(() => {
     const status = new URLSearchParams(location.search).get('status');
+    const priority = new URLSearchParams(location.search).get('priority');
     if (status) setStatusFilter(status);
+    if (priority && priority !== 'all') {
+      const priorities = priority.split(',');
+      setSelectedPriorities(priorities);
+      setPriorityFilter('custom');
+    } else if (priority === 'all') {
+      setSelectedPriorities([]);
+      setPriorityFilter('all');
+    }
   }, [location.search]);
 
   const fetchProfile = async () => {
@@ -90,6 +124,10 @@ const AllTickets = () => {
     } finally { 
       setLoading(false); 
     }
+  };
+
+  const handleViewDetails = (ticketId) => {
+    navigate(`/tickets/${ticketId}`);
   };
 
   const handleMarkAsDone = async (ticketId) => {
@@ -136,7 +174,6 @@ const AllTickets = () => {
     }
   };
 
-  // Handle removing an engineer from a ticket
   const handleRemoveEngineer = (ticket, engineerId, engineerName) => {
     setSelectedTicket(ticket);
     setRemoveEngineerId(engineerId);
@@ -162,7 +199,6 @@ const AllTickets = () => {
     }
   };
 
-  // Handle adding a single engineer to a ticket
   const handleAddEngineer = (ticket) => {
     setSelectedTicket(ticket);
     setSingleEngineerId('');
@@ -199,6 +235,32 @@ const AllTickets = () => {
     }
   };
 
+  // NEW: Handle Delete Ticket
+  const handleDeleteTicket = (ticket) => {
+    setDeletingTicket(ticket);
+    setDeleteReason('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteTicket = async () => {
+    if (!deletingTicket) return;
+    
+    setDeleting(true);
+    try {
+      await ticketAPI.deleteTicket(deletingTicket.id, deleteReason);
+      setDeleteDialogOpen(false);
+      fetchData();
+      setSuccess(`Ticket ${deletingTicket.ticket_number} has been deleted`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) { 
+      setError('Failed to delete ticket'); 
+    } finally { 
+      setDeleting(false);
+      setDeletingTicket(null);
+      setDeleteReason('');
+    }
+  };
+
   const getStatusChip = (status) => {
     const config = {
       open: { label: 'Open', color: 'error' },
@@ -206,14 +268,52 @@ const AllTickets = () => {
       resolved: { label: 'Resolved', color: 'success' },
       closed: { label: 'Closed', color: 'default' },
       pending_client: { label: 'Pending Client', color: 'info' },
+      escalated: { label: 'Escalated', color: 'error' },
     };
     const s = config[status] || { label: status, color: 'default' };
     return <Chip label={s.label} color={s.color} size="small" variant="outlined" />;
   };
 
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'critical': return 'error';
+      case 'high': return 'warning';
+      case 'medium': return 'info';
+      case 'low': return 'success';
+      default: return 'default';
+    }
+  };
+
   const getAvailableEngineers = () => {
     const assignedIds = selectedTicket?.assigned_engineers?.map(item => item.engineer.id) || [];
     return engineers.filter(eng => !assignedIds.includes(eng.id));
+  };
+
+  // Handle priority selection (supports multiple selections)
+  const handlePrioritySelect = (priority) => {
+    let newSelectedPriorities;
+    if (selectedPriorities.includes(priority)) {
+      newSelectedPriorities = selectedPriorities.filter(p => p !== priority);
+    } else {
+      newSelectedPriorities = [...selectedPriorities, priority];
+    }
+    
+    setSelectedPriorities(newSelectedPriorities);
+    
+    if (newSelectedPriorities.length === 0) {
+      setPriorityFilter('all');
+    } else if (newSelectedPriorities.length === 1) {
+      setPriorityFilter(newSelectedPriorities[0]);
+    } else {
+      setPriorityFilter('custom');
+    }
+  };
+
+  // Check if a ticket matches the priority filter
+  const matchesPriorityFilter = (ticketPriority) => {
+    if (priorityFilter === 'all') return true;
+    if (selectedPriorities.length === 0) return true;
+    return selectedPriorities.includes(ticketPriority);
   };
 
   const filteredTickets = tickets.filter(ticket => {
@@ -224,8 +324,23 @@ const AllTickets = () => {
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'resolved' ? (ticket.status === 'resolved' || ticket.status === 'closed') : ticket.status === statusFilter);
     
-    return matchesSearch && matchesStatus;
+    const matchesPriority = matchesPriorityFilter(ticket.priority);
+    
+    return matchesSearch && matchesStatus && matchesPriority;
   });
+
+  // Get display text for priority filter
+  const getPriorityFilterDisplay = () => {
+    if (priorityFilter === 'all') return 'All Priorities';
+    if (selectedPriorities.length === 1) {
+      const priority = priorityOptions.find(p => p.value === selectedPriorities[0]);
+      return priority ? priority.label : selectedPriorities[0];
+    }
+    if (selectedPriorities.length > 1) {
+      return `${selectedPriorities.length} priorities selected`;
+    }
+    return 'All Priorities';
+  };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
 
@@ -244,21 +359,108 @@ const AllTickets = () => {
           <Grid item xs={12} md={4}>
             <TextField 
                 fullWidth 
-                placeholder="Search..." 
+                placeholder="Search by ticket number or title..." 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
                 InputProps={{ startAdornment: <Search fontSize="small" sx={{ mr: 1, color: 'gray' }} /> }}
             />
           </Grid>
           <Grid item xs={12} md={3}>
-            <Select fullWidth value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} size="small">
-              <MenuItem value="all">All Statuses</MenuItem>
-              <MenuItem value="open">Open</MenuItem>
-              <MenuItem value="in_progress">In Progress</MenuItem>
-              <MenuItem value="resolved">Resolved</MenuItem>
-            </Select>
+            <FormControl fullWidth size="small">
+              <InputLabel>Status</InputLabel>
+              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} label="Status">
+                <MenuItem value="all">All Statuses</MenuItem>
+                <MenuItem value="open">Open</MenuItem>
+                <MenuItem value="in_progress">In Progress</MenuItem>
+                <MenuItem value="resolved">Resolved</MenuItem>
+                <MenuItem value="closed">Closed</MenuItem>
+                <MenuItem value="escalated">Escalated</MenuItem>
+                <MenuItem value="pending_client">Pending Client</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Priority</InputLabel>
+              <Select 
+                value={priorityFilter === 'custom' ? 'custom' : (selectedPriorities[0] || 'all')}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === 'all') {
+                    setSelectedPriorities([]);
+                    setPriorityFilter('all');
+                  } else if (value === 'high_critical') {
+                    setSelectedPriorities(['high', 'critical']);
+                    setPriorityFilter('custom');
+                  } else {
+                    setSelectedPriorities([value]);
+                    setPriorityFilter(value);
+                  }
+                }}
+                label="Priority"
+                renderValue={() => getPriorityFilterDisplay()}
+              >
+                <MenuItem value="all">All Priorities</MenuItem>
+                <Divider />
+                <MenuItem value="low">Low</MenuItem>
+                <MenuItem value="medium">Medium</MenuItem>
+                <MenuItem value="high">High</MenuItem>
+                <MenuItem value="critical">Critical</MenuItem>
+                <Divider />
+                <MenuItem value="high_critical">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip label="High" size="small" color="warning" />
+                    <span>+</span>
+                    <Chip label="Critical" size="small" color="error" />
+                    <span> (High & Critical)</span>
+                  </Box>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <Button 
+              fullWidth 
+              variant="outlined" 
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('all');
+                setSelectedPriorities([]);
+                setPriorityFilter('all');
+              }}
+            >
+              Clear Filters
+            </Button>
           </Grid>
         </Grid>
+        
+        {/* Show active priority filters as chips */}
+        {selectedPriorities.length > 0 && priorityFilter !== 'all' && (
+          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Typography variant="caption" color="textSecondary" sx={{ mr: 1 }}>
+              Active priority filters:
+            </Typography>
+            {selectedPriorities.map(priority => (
+              <Chip 
+                key={priority}
+                label={priority.charAt(0).toUpperCase() + priority.slice(1)} 
+                size="small"
+                color={getPriorityColor(priority)}
+                onDelete={() => handlePrioritySelect(priority)}
+              />
+            ))}
+            <Button 
+              size="small" 
+              onClick={() => {
+                setSelectedPriorities([]);
+                setPriorityFilter('all');
+              }}
+              sx={{ ml: 1 }}
+            >
+              Clear all
+            </Button>
+          </Box>
+        )}
       </Paper>
 
       <TableContainer component={Paper} sx={{ boxShadow: 3 }}>
@@ -276,78 +478,122 @@ const AllTickets = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredTickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((ticket) => (
-              <TableRow key={ticket.id} hover>
-                <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>{ticket.ticket_number}</TableCell>
-                <TableCell>{ticket.title}</TableCell>
-                <TableCell>
-                  {currentUser?.user_type === 'admin' ? (
-                    <Select value={ticket.priority} onChange={(e) => handlePriorityChange(ticket.id, e.target.value)} size="small" variant="standard" disableUnderline>
-                      <MenuItem value="low">Low</MenuItem>
-                      <MenuItem value="medium">Medium</MenuItem>
-                      <MenuItem value="high">High</MenuItem>
-                      <MenuItem value="critical">Critical</MenuItem>
-                    </Select>
-                  ) : (
-                    <Chip label={ticket.priority} size="small" />
-                  )}
-                </TableCell>
-                <TableCell>{getStatusChip(ticket.status)}</TableCell>
-                <TableCell>{ticket.client?.username || 'N/A'}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
-                    {ticket.assigned_engineers?.map(item => (
-                      <Chip 
-                        key={item.id} 
-                        label={item.engineer.username} 
-                        size="small" 
-                        sx={{ m: 0.3 }}
-                        onDelete={currentUser?.user_type === 'admin' ? () => handleRemoveEngineer(ticket, item.engineer.id, item.engineer.username) : undefined}
-                        deleteIcon={<PersonRemove />}
-                      />
-                    ))}
-                    {currentUser?.user_type === 'admin' && (
-                      <IconButton 
-                        size="small" 
-                        color="primary" 
-                        onClick={() => handleAddEngineer(ticket)}
-                        sx={{ ml: 0.5 }}
-                      >
-                        <Add fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
-                </TableCell>
-                <TableCell>{format(new Date(ticket.created_at), 'MMM dd, HH:mm')}</TableCell>
-                <TableCell align="center">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                    <Tooltip title="View Details">
-                      <IconButton onClick={() => navigate(`/tickets/${ticket.id}`)}>
-                        <Badge color="error" variant="dot" invisible={!ticket.has_unread_messages}>
-                          <Chat fontSize="small" />
-                        </Badge>
-                      </IconButton>
-                    </Tooltip>
-                    {ticket.status === 'resolved' || ticket.status === 'closed' ? (
-                        <CheckCircle color="success" sx={{ p: 0.5 }} fontSize="small" />
-                    ) : (
-                        <Tooltip title="Mark as Resolved">
-                          <IconButton color="success" size="small" onClick={() => handleMarkAsDone(ticket.id)}>
-                            <DoneAll fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                    )}
-                    {currentUser?.user_type === 'admin' && (
-                      <Tooltip title="Manage Assignments">
-                        <IconButton size="small" onClick={() => handleAssignTicket(ticket)}>
-                          <Group fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </Box>
+            {filteredTickets.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body1" color="textSecondary">
+                    No tickets found matching your filters
+                  </Typography>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredTickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((ticket) => (
+                <TableRow key={ticket.id} hover>
+                  <TableCell 
+                    sx={{ fontWeight: 'bold', color: 'primary.main', cursor: 'pointer' }}
+                    onClick={() => handleViewDetails(ticket.id)}
+                  >
+                    {ticket.ticket_number}
+                  </TableCell>
+                  <TableCell 
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => handleViewDetails(ticket.id)}
+                  >
+                    {ticket.title}
+                  </TableCell>
+                  <TableCell>
+                    {currentUser?.user_type === 'admin' ? (
+                      <Select 
+                        value={ticket.priority} 
+                        onChange={(e) => handlePriorityChange(ticket.id, e.target.value)} 
+                        size="small" 
+                        variant="standard" 
+                        disableUnderline
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MenuItem value="low">Low</MenuItem>
+                        <MenuItem value="medium">Medium</MenuItem>
+                        <MenuItem value="high">High</MenuItem>
+                        <MenuItem value="critical">Critical</MenuItem>
+                      </Select>
+                    ) : (
+                      <Chip 
+                        label={ticket.priority} 
+                        size="small" 
+                        color={getPriorityColor(ticket.priority)}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>{getStatusChip(ticket.status)}</TableCell>
+                  <TableCell>{ticket.client?.username || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+                      {ticket.assigned_engineers?.map(item => (
+                        <Chip 
+                          key={item.id} 
+                          label={item.engineer.username} 
+                          size="small" 
+                          sx={{ m: 0.3 }}
+                          onDelete={currentUser?.user_type === 'admin' ? () => handleRemoveEngineer(ticket, item.engineer.id, item.engineer.username) : undefined}
+                          deleteIcon={<PersonRemove />}
+                        />
+                      ))}
+                      {currentUser?.user_type === 'admin' && (
+                        <IconButton 
+                          size="small" 
+                          color="primary" 
+                          onClick={() => handleAddEngineer(ticket)}
+                          sx={{ ml: 0.5 }}
+                        >
+                          <Add fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell>{format(new Date(ticket.created_at), 'MMM dd, HH:mm')}</TableCell>
+                  <TableCell align="center">
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <Tooltip title="View Details">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleViewDetails(ticket.id)}
+                          color="primary"
+                        >
+                          <Visibility fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      {ticket.status === 'resolved' || ticket.status === 'closed' ? (
+                          <CheckCircle color="success" sx={{ p: 0.5 }} fontSize="small" />
+                      ) : (
+                          <Tooltip title="Mark as Resolved">
+                            <IconButton color="success" size="small" onClick={() => handleMarkAsDone(ticket.id)}>
+                              <DoneAll fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                      )}
+                      {currentUser?.user_type === 'admin' && (
+                        <>
+                          <Tooltip title="Manage Assignments">
+                            <IconButton size="small" onClick={() => handleAssignTicket(ticket)}>
+                              <Group fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Ticket">
+                            <IconButton 
+                              size="small" 
+                              color="error" 
+                              onClick={() => handleDeleteTicket(ticket)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
         <TablePagination 
@@ -360,11 +606,11 @@ const AllTickets = () => {
             setRowsPerPage(parseInt(e.target.value, 10));
             setPage(0);
           }}
-          rowsPerPageOptions={[5, 10, 25]}
+          rowsPerPageOptions={[5, 10, 25, 50, 100]}
         />
       </TableContainer>
 
-      {/* Bulk Assignment Dialog */}
+      {/* Assign Dialog */}
       <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Manage Assignment: #{selectedTicket?.ticket_number}</DialogTitle>
         <DialogContent>
@@ -410,7 +656,7 @@ const AllTickets = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Remove Engineer Confirmation Dialog */}
+      {/* Remove Engineer Dialog */}
       <Dialog open={removeDialogOpen} onClose={() => setRemoveDialogOpen(false)}>
         <DialogTitle>Remove Engineer</DialogTitle>
         <DialogContent>
@@ -426,7 +672,7 @@ const AllTickets = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Add Single Engineer Dialog */}
+      {/* Add Engineer Dialog */}
       <Dialog open={addEngineerDialogOpen} onClose={() => setAddEngineerDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Engineer to Ticket #{selectedTicket?.ticket_number}</DialogTitle>
         <DialogContent>
@@ -452,6 +698,47 @@ const AllTickets = () => {
           <Button onClick={() => setAddEngineerDialogOpen(false)}>Cancel</Button>
           <Button onClick={confirmAddEngineer} variant="contained" disabled={!singleEngineerId || addingEngineer}>
             {addingEngineer ? <CircularProgress size={24} /> : 'Add Engineer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Ticket Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ bgcolor: '#d32f2f', color: 'white' }}>
+          Delete Ticket: #{deletingTicket?.ticket_number}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mt: 2, mb: 2, color: '#d32f2f' }}>
+            ⚠️ Warning: This action cannot be undone. This will permanently delete the ticket and all associated messages.
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Reason for deletion (optional)"
+            placeholder="Please provide a reason for deleting this ticket..."
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            margin="normal"
+            variant="outlined"
+          />
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+            Ticket: <strong>{deletingTicket?.ticket_number}</strong> - {deletingTicket?.title}
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            Client: {deletingTicket?.client?.username || 'N/A'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={confirmDeleteTicket} 
+            color="error" 
+            variant="contained" 
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deleting ? 'Deleting...' : 'Delete Permanently'}
           </Button>
         </DialogActions>
       </Dialog>

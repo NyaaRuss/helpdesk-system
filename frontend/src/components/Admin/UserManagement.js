@@ -27,17 +27,20 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Snackbar,
 } from '@mui/material';
 import {
   Search,
   Refresh,
   Visibility,
-  Edit,
   Person,
   Engineering,
   AdminPanelSettings,
   Email,
   Phone,
+  Delete as DeleteIcon,
+  Warning as WarningIcon,
+  Close,
 } from '@mui/icons-material';
 import { authAPI } from '../../api/api';
 import { format } from 'date-fns';
@@ -47,21 +50,40 @@ const UserManagement = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [currentUser, setCurrentUser] = useState(null);
   
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
+  
+  // Delete Dialog State
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchUsers();
   }, []);
 
   useEffect(() => {
     filterUsers();
   }, [users, searchTerm, userTypeFilter]);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await authAPI.getProfile();
+      setCurrentUser(response.data);
+    } catch (err) {
+      console.error('Error fetching current user:', err);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -77,30 +99,68 @@ const UserManagement = () => {
   };
 
   const filterUsers = () => {
-    let filtered = users;
+    let filtered = [...users];
 
-    // Filter by search term
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(user =>
-        user.username.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower) ||
-        user.first_name.toLowerCase().includes(searchLower) ||
-        user.last_name.toLowerCase().includes(searchLower)
+        user.username?.toLowerCase().includes(searchLower) ||
+        user.email?.toLowerCase().includes(searchLower) ||
+        (user.first_name && user.first_name.toLowerCase().includes(searchLower)) ||
+        (user.last_name && user.last_name.toLowerCase().includes(searchLower))
       );
     }
 
-    // Filter by user type
     if (userTypeFilter !== 'all') {
       filtered = filtered.filter(user => user.user_type === userTypeFilter);
     }
 
     setFilteredUsers(filtered);
+    setPage(0);
   };
 
   const handleViewUser = (user) => {
     setSelectedUser(user);
     setUserDialogOpen(true);
+  };
+
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    setDeleteReason('');
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    // Prevent admin from deleting themselves
+    if (currentUser && currentUser.id === userToDelete.id) {
+      showSnackbar('You cannot delete your own account', 'error');
+      setDeleteDialogOpen(false);
+      return;
+    }
+    
+    setDeleting(true);
+    try {
+      await authAPI.deleteUser(userToDelete.id, deleteReason);
+      showSnackbar(`User ${userToDelete.username} has been deleted successfully`, 'success');
+      setDeleteDialogOpen(false);
+      fetchUsers(); // Refresh the list
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      showSnackbar(err.response?.data?.error || 'Failed to delete user', 'error');
+    } finally {
+      setDeleting(false);
+      setUserToDelete(null);
+      setDeleteReason('');
+    }
+  };
+
+  const showSnackbar = (message, severity) => {
+    setSnackbar({ open: true, message, severity });
+    setTimeout(() => {
+      setSnackbar(prev => ({ ...prev, open: false }));
+    }, 6000);
   };
 
   const getUserTypeIcon = (type) => {
@@ -149,9 +209,21 @@ const UserManagement = () => {
 
   return (
     <Box>
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
-          <Typography variant="h4" gutterBottom>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1a237e' }}>
             User Management
           </Typography>
           <Typography variant="body1" color="textSecondary">
@@ -168,8 +240,14 @@ const UserManagement = () => {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
           {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
+          {success}
         </Alert>
       )}
 
@@ -179,7 +257,7 @@ const UserManagement = () => {
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
-              placeholder="Search users..."
+              placeholder="Search users by name, username or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -227,14 +305,14 @@ const UserManagement = () => {
       <Paper sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
           <Table>
-            <TableHead>
+            <TableHead sx={{ bgcolor: '#fafafa' }}>
               <TableRow>
-                <TableCell>User</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Joined</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>User</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -264,7 +342,7 @@ const UserManagement = () => {
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Email fontSize="small" />
+                        <Email fontSize="small" sx={{ color: '#1565c0' }} />
                         <Typography variant="body2">
                           {user.email}
                         </Typography>
@@ -273,7 +351,7 @@ const UserManagement = () => {
                     <TableCell>
                       {user.phone ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Phone fontSize="small" />
+                          <Phone fontSize="small" sx={{ color: '#4caf50' }} />
                           <Typography variant="body2">
                             {user.phone}
                           </Typography>
@@ -295,8 +373,19 @@ const UserManagement = () => {
                           <IconButton
                             size="small"
                             onClick={() => handleViewUser(user)}
+                            sx={{ color: '#1976d2' }}
                           >
                             <Visibility fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete User">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteClick(user)}
+                            sx={{ color: '#d32f2f' }}
+                            disabled={currentUser && currentUser.id === user.id}
+                          >
+                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </Box>
@@ -309,7 +398,7 @@ const UserManagement = () => {
         </TableContainer>
         
         <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
+          rowsPerPageOptions={[5, 10, 25, 50]}
           component="div"
           count={filteredUsers.length}
           rowsPerPage={rowsPerPage}
@@ -324,57 +413,130 @@ const UserManagement = () => {
 
       {/* User Details Dialog */}
       <Dialog open={userDialogOpen} onClose={() => setUserDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
+        <DialogTitle sx={{ bgcolor: '#1a237e', color: 'white' }}>
           User Details
+          <IconButton
+            aria-label="close"
+            onClick={() => setUserDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}
+          >
+            <Close />
+          </IconButton>
         </DialogTitle>
         <DialogContent>
           {selectedUser && (
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Basic Information
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="body1">
-                    <strong>Name:</strong> {selectedUser.first_name} {selectedUser.last_name}
+                <Paper sx={{ p: 2, bgcolor: '#e3f2fd', borderRadius: 2 }}>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Basic Information
                   </Typography>
-                  <Typography variant="body1">
-                    <strong>Username:</strong> {selectedUser.username}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>Email:</strong> {selectedUser.email}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>Phone:</strong> {selectedUser.phone || 'Not set'}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>User Type:</strong> {getUserTypeChip(selectedUser.user_type)}
-                  </Typography>
-                </Box>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body1">
+                      <strong>Name:</strong> {selectedUser.first_name} {selectedUser.last_name}
+                    </Typography>
+                    <Typography variant="body1">
+                      <strong>Username:</strong> {selectedUser.username}
+                    </Typography>
+                    <Typography variant="body1">
+                      <strong>Email:</strong> {selectedUser.email}
+                    </Typography>
+                    <Typography variant="body1">
+                      <strong>Phone:</strong> {selectedUser.phone || 'Not set'}
+                    </Typography>
+                    <Typography variant="body1">
+                      <strong>User Type:</strong> {getUserTypeChip(selectedUser.user_type)}
+                    </Typography>
+                  </Box>
+                </Paper>
               </Grid>
 
               <Grid item xs={12}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  Account Information
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="body2">
-                    <strong>Joined:</strong> {formatDate(selectedUser.date_joined)}
+                <Paper sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Account Information
                   </Typography>
-                  <Typography variant="body2">
-                    <strong>Last Login:</strong> {formatDate(selectedUser.last_login) || 'Never'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Active:</strong> {selectedUser.is_active ? 'Yes' : 'No'}
-                  </Typography>
-                </Box>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2">
+                      <strong>Joined:</strong> {formatDate(selectedUser.date_joined)}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Last Login:</strong> {formatDate(selectedUser.last_login) || 'Never'}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Active:</strong> {selectedUser.is_active ? 'Yes' : 'No'}
+                    </Typography>
+                  </Box>
+                </Paper>
               </Grid>
             </Grid>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setUserDialogOpen(false)}>
+          <Button onClick={() => setUserDialogOpen(false)} variant="outlined">
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ bgcolor: '#d32f2f', color: 'white' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <WarningIcon />
+            Delete User: {userToDelete?.username}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mt: 2, mb: 2, color: '#d32f2f' }}>
+            ⚠️ Warning: This action cannot be undone. This will permanently delete the user and all associated data.
+          </Typography>
+          
+          {userToDelete && (
+            <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+              <Typography variant="body2">
+                <strong>User Details:</strong>
+              </Typography>
+              <Typography variant="body2">
+                Name: {userToDelete.first_name} {userToDelete.last_name}
+              </Typography>
+              <Typography variant="body2">
+                Username: {userToDelete.username}
+              </Typography>
+              <Typography variant="body2">
+                Email: {userToDelete.email}
+              </Typography>
+              <Typography variant="body2">
+                Type: {userToDelete.user_type?.toUpperCase()}
+              </Typography>
+            </Paper>
+          )}
+          
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Reason for deletion (optional)"
+            placeholder="Please provide a reason for deleting this user..."
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            margin="normal"
+            variant="outlined"
+            helperText="This reason will be sent to the user via email"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} variant="outlined">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteUser} 
+            color="error" 
+            variant="contained" 
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deleting ? 'Deleting...' : 'Delete Permanently'}
           </Button>
         </DialogActions>
       </Dialog>

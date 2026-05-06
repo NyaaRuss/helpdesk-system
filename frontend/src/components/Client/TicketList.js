@@ -40,6 +40,9 @@ import { useNavigate } from 'react-router-dom';
 import { ticketAPI } from '../../api/api';
 import { format } from 'date-fns';
 
+const BASE_URL = 'http://192.168.1.74:3000';
+
+
 const TicketList = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);

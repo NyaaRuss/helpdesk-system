@@ -24,19 +24,18 @@ const schema = yup.object().shape({
   title: yup.string().required('Title is required').max(200),
   description: yup.string().required('Description is required'),
   category: yup.string().required('Category is required'),
-  // Priority is not required for clients - will be set to medium by default
 });
 
 const CreateTicket = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [createdTicketNumber, setCreatedTicketNumber] = useState('');
   const [showNotificationSent, setShowNotificationSent] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const isAdminOrEngineer = user?.user_type === 'admin' || user?.user_type === 'engineer';
-  const isClient = user?.user_type === 'client';
 
   const {
     control,
@@ -49,7 +48,7 @@ const CreateTicket = () => {
       title: '',
       description: '',
       category: 'technical',
-      priority: 'medium', // Default priority for clients
+      priority: 'medium',
     },
   });
 
@@ -72,78 +71,57 @@ const CreateTicket = () => {
     setLoading(true);
     setError('');
     setSuccess('');
+    setCreatedTicketNumber('');
 
-    // Prepare ticket data
     const ticketData = {
       title: data.title,
       description: data.description,
       category: data.category,
     };
 
-    // Only admins and engineers can set priority
     if (isAdminOrEngineer && data.priority) {
       ticketData.priority = data.priority;
     }
-    // For clients, don't send priority at all - backend will default to 'medium'
 
     try {
       const response = await ticketAPI.createTicket(ticketData);
-      console.log('Full response:', response);
-      console.log('Response data:', response.data);
+      console.log('Response:', response.data);
       
-      // Extract ticket info from response
-      let ticketId = null;
-      let ticketNumber = null;
+      // Get ticket number from response
+      const ticketNumber = response.data.ticket_number || 
+                          response.data.data?.ticket_number || 
+                          'Created';
+      const ticketId = response.data.id || response.data.data?.id;
       
-      if (response.data) {
-        if (response.data.id) {
-          ticketId = response.data.id;
-          ticketNumber = response.data.ticket_number;
-        } else if (response.data.data && response.data.data.id) {
-          ticketId = response.data.data.id;
-          ticketNumber = response.data.data.ticket_number;
-        } else if (response.data.ticket && response.data.ticket.id) {
-          ticketId = response.data.ticket.id;
-          ticketNumber = response.data.ticket.ticket_number;
-        }
-      }
+      setCreatedTicketNumber(ticketNumber);
+      setSuccess(`✅ Ticket ${ticketNumber} has been created successfully!`);
       
-      setSuccess(`✓ Ticket created successfully! Ticket #: ${ticketNumber || 'Created'}`);
-      
-      // Show notification sent message
       setShowNotificationSent(true);
-      
       reset();
       
-      // Redirect after showing success message
+      // Redirect after 3 seconds
       setTimeout(() => {
         if (ticketId) {
           navigate(`/tickets/${ticketId}`);
+        } else if (user?.user_type === 'admin') {
+          navigate('/admin/tickets');
+        } else if (user?.user_type === 'engineer') {
+          navigate('/engineer/tickets');
         } else {
-          if (user?.user_type === 'admin') {
-            navigate('/admin/tickets');
-          } else if (user?.user_type === 'engineer') {
-            navigate('/engineer/tickets');
-          } else {
-            navigate('/tickets');
-          }
+          navigate('/tickets');
         }
       }, 3000);
       
     } catch (err) {
       console.error('Create ticket error:', err);
-      
       let errorMessage = 'Failed to create ticket. Please try again.';
       if (err.response?.data?.detail) {
         errorMessage = err.response.data.detail;
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
-      } else if (err.response?.data?.error) {
-        errorMessage = err.response.data.error;
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -157,7 +135,7 @@ const CreateTicket = () => {
           Create New Ticket
         </Typography>
         <Typography variant="body1" color="textSecondary" align="center" sx={{ mb: 4 }}>
-          {isClient 
+          {user?.user_type === 'client' 
             ? "Submit your issue or request. Our support team will review and prioritize it."
             : "Fill in the details below to create a new support ticket"}
         </Typography>
@@ -220,7 +198,6 @@ const CreateTicket = () => {
               />
             </Grid>
 
-            {/* Priority field - ONLY for admins and engineers */}
             {isAdminOrEngineer && (
               <Grid item xs={12}>
                 <Controller
@@ -232,7 +209,6 @@ const CreateTicket = () => {
                       select
                       label="Priority"
                       fullWidth
-                      required
                       error={!!errors.priority}
                       helperText={errors.priority?.message}
                       disabled={loading}
@@ -317,7 +293,6 @@ const CreateTicket = () => {
         </form>
       </Paper>
 
-      {/* Snackbar notification for email alerts */}
       <Snackbar
         open={showNotificationSent}
         autoHideDuration={6000}
